@@ -13,11 +13,18 @@ aside{background:var(--pn);border-left:1px solid var(--ln);overflow:auto;padding
 h2{font-size:16px;margin:18px 0 8px;font-weight:700}h2:first-child{margin-top:0}
 label{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:8px;margin:7px 0;min-height:36px}
 label>span{font-size:14px}output{font-size:13px;text-align:right;opacity:.7}
-input[type=range]{width:100%;height:32px}input[type=checkbox]{width:28px;height:28px;justify-self:start}
+input[type=range]{width:100%;height:32px}
+.pkrow{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin:7px 0}.pkrow>span{font-size:14px}
+.fp{text-align:left;font-size:19px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:360px;overflow:auto;margin:6px 0;padding:2px;border:1px solid var(--ln);border-radius:var(--r)}.fg[hidden]{display:none}
+.warn{font-size:13px;color:#a4540a;margin:4px 0;min-height:0}@media(prefers-color-scheme:dark){.warn{color:#f0b070}}
+.gh{grid-column:1/-1;font-size:12px;opacity:.65;padding:6px 4px 0}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:68px;padding:6px 8px;text-align:left;overflow:hidden}
+.tile span{font-size:26px;line-height:1.15;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.tile b{font-size:11px;font-weight:400;opacity:.65}input[type=checkbox]{width:28px;height:28px;justify-self:start}
 input[type=text],select{grid-column:2/4;min-height:40px;font:inherit;padding:0 10px;border:1px solid var(--ln);border-radius:var(--r);background:var(--bg);color:inherit;width:100%}
 input[type=color]{width:100%;height:40px;border:1px solid var(--ln);border-radius:var(--r);background:none;padding:2px;grid-column:2/4}
 button{font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--ln);border-radius:var(--r);background:var(--bg);color:inherit;cursor:pointer}
-button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.on,.tile.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.two{grid-template-columns:1fr 1fr}
 #list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}#list button{min-height:36px;padding:0 10px}
 #go{width:100%;margin-top:20px;background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
@@ -47,11 +54,10 @@ import JSZip from 'jszip';
 const opentype=OT.default||OT, CL=ClipperLib, S=1000, V2=THREE.Vector2;
 
 /* ---------- fonty ---------- */
-const LF={'Titan One':'fonts/TitanOne-Regular.ttf','Lobster':'fonts/Lobster-Regular.ttf'};
-const NF={'Pacifico':'fonts/Pacifico-Regular.ttf','Lobster':'fonts/Lobster-Regular.ttf'};
-const fonts={};
-await Promise.all([...new Set([...Object.values(LF),...Object.values(NF)])].map(async u=>{
-  fonts[u]=opentype.parse(await (await fetch(u)).arrayBuffer());}));
+const FL=[["Pacifico","Pacifico.ttf","p",0,0,""],["Lobster","Lobster.ttf","p",0,0,""],["Dancing Script","DancingScript.ttf","p",1,0,""],["Caveat","Caveat.ttf","p",0,0,""],["Sacramento","Sacramento.ttf","p",0,1,"nedrží: P"],["Parisienne","Parisienne.ttf","p",2,2,"nedrží: F K T"],["Kaushan Script","KaushanScript.ttf","p",0,1,"nedrží: K"],["Courgette","Courgette.ttf","p",0,0,""],["Allura","Allura.ttf","p",2,1,"nedrží: F T"],["Alex Brush","AlexBrush.ttf","p",2,0,""],["Yellowtail","Yellowtail.ttf","p",0,0,""],["Marck Script","MarckScript.ttf","p",0,0,""],["Playball","Playball.ttf","p",0,1,"nedrží: A"],["Merienda","Merienda.ttf","p",0,0,""],["Norican","Norican.ttf","p",0,0,""],["Damion","Damion.ttf","p",0,1,"nedrží: T"],["Grand Hotel","GrandHotel.ttf","p",0,0,""],["Bad Script","BadScript.ttf","p",0,0,""],["Comforter","Comforter.ttf","p",1,1,"nedrží: J K"],["Style Script","StyleScript.ttf","p",1,2,"nedrží: D K R"],["Amatic SC","AmaticSC.ttf","p",2,0,""],["Indie Flower","IndieFlower.ttf","p",0,0,""],["Kalam","Kalam.ttf","p",0,0,""],["Patrick Hand","PatrickHand.ttf","p",0,0,""],["Fuzzy Bubbles","FuzzyBubbles.ttf","p",0,0,""],["Caveat Brush","CaveatBrush.ttf","p",0,0,""],["Yesteryear","Yesteryear.ttf","p",0,0,""],["Berkshire Swash","BerkshireSwash.ttf","p",0,0,""],["Pinyon Script","PinyonScript.ttf","p",2,2,"nedrží: F K N T W"],["Italianno","Italianno.ttf","p",2,1,"nedrží: K"],["Arizonia","Arizonia.ttf","p",1,2,"nedrží: A D E H I K…"],["Lovers Quarrel","LoversQuarrel.ttf","p",2,1,"nedrží: M Q"],["Petit Formal Script","PetitFormalScript.ttf","p",2,1,"nedrží: K"],["Qwigley","Qwigley.ttf","p",2,2,"nedrží: B D K M T"],["Mea Culpa","MeaCulpa.ttf","p",2,2,"tenké tahy"],["Ruthie","Ruthie.ttf","p",2,2,"nedrží: A G H M V W"],["Playwrite CZ","PlaywriteCZ.ttf","p",0,2,"nedrží: B P R"],["Birthstone","Birthstone.ttf","p",1,0,""],["Send Flowers","SendFlowers.ttf","p",0,0,""],["Licorice","Licorice.ttf","p",2,2,"nedrží: B D F M P R…"],["Gwendolyn","Gwendolyn.ttf","p",2,2,"tenké tahy"],["Grechen Fuemen","GrechenFuemen.ttf","p",1,2,"nedrží: B D K P Q R"],["Splash","Splash.ttf","p",2,2,"nedrží: A B C D E F…"],["Water Brush","WaterBrush.ttf","p",1,2,"nedrží: G H I K M S…"],["Updock","Updock.ttf","p",2,1,"nedrží: Y"],["WindSong","WindSong.ttf","p",2,2,"nedrží: B D H P"],["Oooh Baby","OoohBaby.ttf","p",0,1,"nedrží: K"],["Square Peg","SquarePeg.ttf","p",1,2,"nedrží: B D J K P R"],["Waterfall","Waterfall.ttf","p",2,1,"nedrží: J T"],["Whisper","Whisper.ttf","p",2,1,"nedrží: Y"],["Hurricane","Hurricane.ttf","p",2,2,"nedrží: D M P R T"],["Fleur De Leah","FleurDeLeah.ttf","p",2,2,"nedrží: I M U"],["Babylonica","Babylonica.ttf","p",2,2,"nedrží: H J K L M Q…"],["Corinthia","Corinthia.ttf","p",2,0,""],["Estonia","Estonia.ttf","p",2,0,""],["Island Moments","IslandMoments.ttf","p",2,2,"nedrží: B H K R Y"],["Kolker Brush","KolkerBrush.ttf","p",2,2,"nedrží: A B C E F G…"],["Love Light","LoveLight.ttf","p",2,2,"nedrží: A G H M V W"],["Moon Dance","MoonDance.ttf","p",2,1,"nedrží: Q"],["My Soul","MySoul.ttf","p",1,2,"nedrží: A B C D E F…"],["Passions Conflict","PassionsConflict.ttf","p",2,2,"tenké tahy"],["Puppies Play","PuppiesPlay.ttf","p",2,1,"tenké tahy"],["Redressed","Redressed.ttf","p",0,1,"nedrží: P R"],["Sassy Frass","SassyFrass.ttf","p",2,1,"nedrží: F"],["Bonheur Royale","BonheurRoyale.ttf","p",2,2,"nedrží: M N U V W"],["Imperial Script","ImperialScript.ttf","p",2,1,"nedrží: K M"],["Inspiration","Inspiration.ttf","p",2,1,"nedrží: T"],["Lavishly Yours","LavishlyYours.ttf","p",2,2,"nedrží: M S Y"],["Luxurious Script","LuxuriousScript.ttf","p",2,1,"nedrží: K M"],["Montez","Montez.ttf","p",1,1,"nedrží: D F"],["Titan One","TitanOne.ttf","t",0,0,""],["Baloo 2","Baloo2.ttf","t",0,0,""],["Luckiest Guy","LuckiestGuy.ttf","t",0,0,""],["Ranchers","Ranchers.ttf","t",0,0,""],["Shrikhand","Shrikhand.ttf","t",0,0,""],["Pangolin","Pangolin.ttf","t",0,0,""],["Alfa Slab One","AlfaSlabOne.ttf","t",0,0,""],["Bevan","Bevan.ttf","t",0,0,""],["Ultra","Ultra.ttf","t",0,0,""],["Rammetto One","RammettoOne.ttf","t",0,0,""],["Racing Sans One","RacingSansOne.ttf","t",0,0,""],["Righteous","Righteous.ttf","t",0,0,""],["Pattaya","Pattaya.ttf","t",0,0,""],["Modak","Modak.ttf","t",0,0,""],["Coiny","Coiny.ttf","t",0,0,""],["Rubik Mono One","RubikMonoOne.ttf","t",0,0,""],["Quicksand","Quicksand.ttf","t",0,0,""],["Playfair Display","PlayfairDisplay.ttf","t",1,0,""],["Abril Fatface","AbrilFatface.ttf","t",1,0,""],["Cinzel","Cinzel.ttf","t",1,1,"nedrží: K"],["Bungee","Bungee.ttf","t",0,0,""],["Dela Gothic One","DelaGothicOne.ttf","t",0,0,""],["Archivo Black","ArchivoBlack.ttf","t",0,0,""],["Anton","Anton.ttf","t",0,0,""],["Bebas Neue","BebasNeue.ttf","t",0,0,""],["Spicy Rice","SpicyRice.ttf","t",0,0,""],["Sigmar One","SigmarOne.ttf","t",0,0,""],["Sansita","Sansita.ttf","t",0,1,"nedrží: K"],["Poetsen One","PoetsenOne.ttf","t",0,0,""],["Grandstander","Grandstander.ttf","t",0,0,""],["Itim","Itim.ttf","t",0,0,""],["Sriracha","Sriracha.ttf","t",0,0,""],["Pridi","Pridi.ttf","t",0,0,""],["Special Elite","SpecialElite.ttf","t",0,1,"nedrží: P"],["Fascinate","Fascinate.ttf","t",0,0,""],["Gloock","Gloock.ttf","t",1,0,""],["Rozha One","RozhaOne.ttf","t",1,0,""],["Yeseva One","YesevaOne.ttf","t",1,0,""],["Chonburi","Chonburi.ttf","t",0,1,"nedrží: Q"],["Yatra One","YatraOne.ttf","t",0,0,""],["Staatliches","Staatliches.ttf","t",0,0,""],["Original Surfer","OriginalSurfer.ttf","t",0,0,""],["Peralta","Peralta.ttf","t",0,0,""],["Margarine","Margarine.ttf","t",0,1,"nedrží: I"],["Mouse Memoirs","MouseMemoirs.ttf","t",0,0,""],["Barriecito","Barriecito.ttf","t",0,0,""],["Baloo Bhai 2","BalooBhai2.ttf","t",0,0,""],["Hammersmith One","HammersmithOne.ttf","t",0,0,""],["Galindo","Galindo.ttf","t",0,0,""],["Oregano","Oregano.ttf","t",0,1,"nedrží: P"],["Ranga","Ranga.ttf","t",0,0,""],["Dekko","Dekko.ttf","t",0,0,""],["Annie Use Your Telescope","AnnieUseYourTelescope.ttf","t",0,1,"nedrží: K"],["Just Another Hand","JustAnotherHand.ttf","t",0,0,""],["Yomogi","Yomogi.ttf","t",0,0,""],["Sedgwick Ave","SedgwickAve.ttf","t",0,0,""],["Sedgwick Ave Display","SedgwickAveDisplay.ttf","t",0,1,"nedrží: I"],["Fondamento","Fondamento.ttf","t",0,1,"nedrží: K"],["Quintessential","Quintessential.ttf","t",1,2,"nedrží: H K L N R T…"],["Stalemate","Stalemate.ttf","t",2,2,"tenké tahy"],["Miama","Miama.ttf","t",1,2,"tenké tahy"],["Ruge Boogie","RugeBoogie.ttf","t",2,2,"nedrží: A K R"],["Engagement","Engagement.ttf","t",0,2,"nedrží: B D F P T"],["Clicker Script","ClickerScript.ttf","t",2,2,"tenké tahy"],["Kavivanar","Kavivanar.ttf","t",0,0,""],["Lemonada","Lemonada.ttf","t",0,0,""],["Mogra","Mogra.ttf","t",0,0,""],["Playpen Sans","PlaypenSans.ttf","t",0,0,""],["Charm","Charm.ttf","t",0,0,""],["Charmonman","Charmonman.ttf","t",0,1,"nedrží: T"]];
+const F=Object.fromEntries(FL.map(([n,f,g])=>[n,{f:'fonts/'+f,g}]));
+const fcache={},getFont=async n=>fcache[n]??=opentype.parse(await (await fetch(F[n].f)).arrayBuffer());
+const faces={},loadFace=n=>faces[n]??=new FontFace(n,`url(${F[n].f})`).load().then(ff=>document.fonts.add(ff)).catch(()=>{});
 
 /* ---------- 2D geometrie (Clipper, 1 mm = 1000 jednotek) ---------- */
 const tree=(P,t=CL.ClipType.ctUnion,Q=[])=>{const c=new CL.Clipper();c.AddPaths(P,CL.PolyType.ptSubject,true);
@@ -68,7 +74,8 @@ const geo=(P,d)=>{const sh=shapesOf(tree(P));return sh.length?new THREE.ExtrudeG
 
 function textPaths(font,text,h,fit){
   const P=[];let c,x=0,y=0;const add=(a,b)=>c.push([a,-b]);
-  for(const k of font.getPath(text,0,0,100).commands){
+  let cm;try{cm=font.getPath(text,0,0,100).commands}catch(e){cm=font.getPath(text,0,0,100,{features:[]}).commands}
+  for(const k of cm){
     if(k.type=='M'){c=[];P.push(c);add(k.x,k.y)}
     else if(k.type=='L')add(k.x,k.y);
     else if(k.type=='Q')for(let i=1;i<=8;i++){const t=i/8,u=1-t;add(u*u*x+2*u*t*k.x1+t*t*k.x,u*u*y+2*u*t*k.y1+t*t*k.y)}
@@ -101,7 +108,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#a8cfee',pm:0};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#a8cfee',pm:0,warn:[]};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -132,22 +139,26 @@ function patPaths(){
 }
 function buildPattern(){pat.visible=false;if(!v.shell||!v.pt||!plate.visible)return;
   const g=geo(patPaths(),v.ph);if(g){pat.geometry.dispose();pat.geometry=g;pat.position.z=v.D;pat.visible=true}}
+function showWarn(){const e=document.getElementById('warn');if(e)e.textContent=v.warn.join(' ')}
 function buildLetter(){
-  letterPaths=textPaths(fonts[LF[v.lf]],v.ch||'T',v.lh,true);
+  letterPaths=textPaths(fcache[v.lf],v.ch||'T',v.lh,true);v.warn=[];
+  const parts=tree(letterPaths).Childs().length,AR=P=>Math.abs(P.reduce((s,c)=>s+CL.Clipper.Area(c),0));
+  if(parts>1)v.warn.push(`Znak se skládá z ${parts} oddělených dílů, nedrží pohromadě (např. háček nebo tečka).`);
+  if(letterPaths.length&&AR(off(off(letterPaths,-1.5),1.5))<.92*AR(letterPaths))v.warn.push('Tenké tahy pod 3 mm, písmeno bude křehké.');
   let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;
   if(v.shell&&g.attributes.position){ // záda zavřená, otevřeno zepředu; čelo je samostatný díl uložený na římse
     const L=letterPaths,bk=Math.max(.8,Math.min(v.back,v.D-v.front-2));
     const cav=geo(off(L,-(v.wall+1.5)),v.D-v.front-bk+.04),rec=geo(off(L,-v.wall),v.front+.04),pg=geo(off(L,-v.wall-.15),v.front);
-    if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}
+    if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}else v.warn.push('Dutina se do tohoto písmene nevejde. Zmenši stěnu, nebo zvětši výšku.');
     if(rec){rec.translate(0,0,v.D-v.front);g=sub(g,rec)}
     if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true}
   }
-  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();
+  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();showWarn();
 }
 const placeZ=()=>{plate.position.z=v.D-v.front;items.forEach(it=>it.mesh.position.z=v.D-it.P)};
 function buildItem(it){
   it.P=Math.min(it.P,maxP());
-  it.paths=it.kind=='Jméno'?textPaths(fonts[NF[v.nf]],v.nm,it.size,false):decoPaths(it.kind,it.size);
+  it.paths=it.kind=='Jméno'?textPaths(fcache[v.nf],v.nm,it.size,false):decoPaths(it.kind,it.size);
   it.mesh.geometry.dispose();it.mesh.geometry=geo(it.paths,it.T+it.P)||new THREE.BufferGeometry();
   it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=v.D-it.P;
 }
@@ -173,18 +184,27 @@ renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEve
 const pn=document.getElementById('pn');
 const R=(id,l,mn,mx,val,st=1)=>`<label><span>${l}</span><input type="range" id="${id}" min="${mn}" max="${mx}" step="${st}" value="${val}"><output>${val}</output></label>`;
 const opts=(o,cur)=>Object.keys(o).map(k=>`<option ${k==cur?'selected':''}>${k}</option>`).join('');
+const pk=k=>`<div class="pkrow"><span>Font</span><button type="button" class="fp" data-pk="${k}" style="font-family:'${v[k]}',sans-serif">${v[k]}</button></div><div class="fg" id="fg_${k}" hidden></div>`;
+function openPicker(k){const g=document.getElementById('fg_'+k);if(!g.hidden){g.hidden=true;return}
+  if(!g.innerHTML){const smp=(k=='lf'?v.ch:v.nm)||'Aa',tile=([n,,,w,lw,lt])=>`<button type="button" class="tile${n==v[k]?' on':''}" data-p="${k}" data-n="${n}"><span style="font-family:'${n}',sans-serif">${smp}</span><b>${n}${k=='lf'?(lt?' · '+lt:''):w?w==1?' · tenké místy':' · příliš tenké':''}</b></button>`;
+    g.innerHTML=[['p','Psací (spojité)'],['t','Tučné a ostatní']].map(([t,h])=>`<div class="gh">${h}</div>`+FL.filter(x=>x[2]==t).sort((a,b)=>k=='lf'?a[4]-b[4]:a[3]-b[3]).map(tile).join('')).join('');
+    const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){loadFace(e.target.dataset.n);io.unobserve(e.target)}}),{root:g,rootMargin:'200px'});
+    g.querySelectorAll('.tile').forEach(t=>io.observe(t))}
+  g.hidden=false}
+async function pickFont(k,n){await getFont(n);v[k]=n;if(k=='lf')buildLetter();else items.filter(i=>i.kind=='Jméno').forEach(buildItem);panel()}
 function panel(){
   const it=sel;
   pn.innerHTML=`<h2>Písmeno</h2>
   <label><span>Znak</span><input type="text" id="ch" maxlength="1" value="${v.ch}"></label>
-  <label><span>Font</span><select id="lf">${opts(LF,v.lf)}</select></label>
+  ${pk('lf')}
   ${R('lh','Výška (mm)',80,200,v.lh)}${R('D','Hloubka (mm)',10,40,v.D)}
   <div class="row two"><button data-m="0" class="${v.shell?'':'on'}">Plné</button><button data-m="1" class="${v.shell?'on':''}">Skořepina</button></div>
   ${v.shell?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('back','Záda (mm)',1.2,6,v.back,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2)+`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`:''}
   <label><span>Barva</span><input type="color" id="lc" value="${v.lc}"></label>
+  <div id="warn" class="warn"></div>
   <h2>Jméno</h2>
   <label><span>Text</span><input type="text" id="nm" value="${v.nm}"></label>
-  <label><span>Font</span><select id="nf">${opts(NF,v.nf)}</select></label>
+  ${pk('nf')}
   <button id="addn" style="width:100%">${items.some(i=>i.kind=='Jméno')?'Jméno je v návrhu':'Přidat jméno'}</button>
   <h2>Dekorace</h2>
   <div class="row">${Object.keys(DEC).map(k=>`<button data-d="${k}">${k}</button>`).join('')}</div>
@@ -198,6 +218,7 @@ function panel(){
   ${v.pt?R('pw','Šířka/velikost (mm)',1,20,v.pw,.5)+(v.pt=='k'?'':R('pg','Mezera (mm)',1,30,v.pg,.5))+R('ph','Výška (mm)',.4,3,v.ph,.2)+`<label><span>Barva vzoru</span><input type="color" id="pc" value="${v.pc}"></label><label><span>Export</span><select id="pm"><option value="0" ${v.pm?'':'selected'}>Vzor jako samostatný díl</option><option value="1" ${v.pm?'selected':''}>Čelo + vzor v jednom (výměna filamentu)</option></select></label>`:''}`:''}
   <label><span>Písmeno v STL</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Všechny díly čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu (čelem nahoru)</option></select></label>
   <button id="go">Stáhnout STL (ZIP)</button><div id="msg"></div>`;
+  loadFace(v.lf);loadFace(v.nf);showWarn();
 }
 let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
@@ -213,6 +234,8 @@ const H={
  ip:e=>{sel.P=+e.value;later(()=>buildItem(sel))},iv:e=>sel.clr=+e.value};
 pn.addEventListener('input',e=>{const o=e.target.nextElementSibling;if(o&&o.tagName=='OUTPUT')o.textContent=e.target.value;H[e.target.id]?.(e.target)});
 pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.pk){openPicker(b.dataset.pk);return}
+  if(b.dataset.p){pickFont(b.dataset.p,b.dataset.n);return}
   if(b.dataset.m!==undefined){v.shell=+b.dataset.m;items.forEach(buildItem);buildLetter();panel()}
   else if(b.dataset.d)addItem(b.dataset.d,(Math.random()-.5)*40,(Math.random()-.5)*40);
   else if(b.dataset.s)select(items.find(i=>i.id==b.dataset.s));
@@ -250,5 +273,5 @@ async function exportZip(btn){
   btn.disabled=false;
 }
 
-buildLetter();addItem('Jméno');
+await Promise.all([getFont(v.lf),getFont(v.nf)]);buildLetter();addItem('Jméno');
 </script></body></html>
