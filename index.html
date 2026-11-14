@@ -108,7 +108,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#a8cfee',pm:0,warn:[]};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#a8cfee',pm:0,warn:[],mnt:0,bk:3,key:null};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -139,19 +139,53 @@ function patPaths(){
 }
 function buildPattern(){pat.visible=false;if(!v.shell||!v.pt||!plate.visible)return;
   const g=geo(patPaths(),v.ph);if(g){pat.geometry.dispose();pat.geometry=g;pat.position.z=v.D;pat.visible=true}}
+const KH={hd:10,nd:6,ht:3,sl:14,clr:.3},GAP=2; // GAP = odstup písmene od zdi/opěrky, aby kořen trnu mohl mít náběh
+const mP=p=>{const q=p.map(([a,b])=>({X:Math.round(a*S),Y:Math.round(b*S)}));if(!CL.Clipper.Orientation(q))q.reverse();return q};
+function centroid(P){let A=0,X=0,Y=0;for(const c of P)for(let i=0;i<c.length;i++){const a=c[i],b=c[(i+1)%c.length],k=a.X*b.Y-b.X*a.Y;A+=k;X+=(a.X+b.X)*k;Y+=(a.Y+b.Y)*k}return[X/(3*A)/S,Y/(3*A)/S]}
+function khPaths(x,y,w=(KH.nd+2*KH.clr)/2,r=(KH.hd+2*KH.clr)/2){return paths(tree([circ(x,y,r,32),[[x-w,y],[x+w,y],[x+w,y+KH.sl],[x-w,y+KH.sl]]].map(mP)))}
+function solveKey(L){
+  const cv=off(L,-(v.wall+1.5)),r=KH.hd/2+KH.clr+1.5,[cx]=centroid(L);let ymax=-1e9,ymin=1e9;
+  cv.forEach(c=>c.forEach(p=>{ymax=Math.max(ymax,p.Y/S);ymin=Math.min(ymin,p.Y/S)}));
+  for(let y=ymax-KH.sl;y>ymin;y-=3){let b=null;
+    for(let x=-120;x<=120;x+=3)if((b===null||Math.abs(x-cx)<Math.abs(b-cx))&&paths(tree(khPaths(x,y,r,r),CL.ClipType.ctDifference,cv)).length==0)b=x;
+    if(b!==null)return{x:b,y,cx}}
+  return null}
+const mgAll=a=>mergeGeometries(a.map(q=>{q=q.index?q.toNonIndexed():q.clone();q.deleteAttribute('uv');return q}));
+const cyl=(r0,r1,h,z)=>{const g=new THREE.CylinderGeometry(r1,r0,h,40);g.rotateX(Math.PI/2);g.translate(0,0,z+h/2);return g};
+const postGeo=(x,y,z0)=>{const nl=GAP+v.bk+.3,rn=KH.nd/2,rh=KH.hd/2;
+  return [cyl(rn+2.5,rn,GAP,z0),cyl(rn,rn,nl,z0),cyl(rn,rh,rh-rn,z0+nl),cyl(rh,rh,KH.ht-(rh-rn),z0+nl+rh-rn)].map(g=>g.translate(x,y,0))};
+const bx=(w,h,d,x,y,z)=>{const g=new THREE.BoxGeometry(w,h,d);g.translate(x,y,z);return g};
+function mountParts(){
+  const k=v.key,L=letterPaths;let x0=1e9,x1=-1e9,y0=1e9;L.forEach(c=>c.forEach(p=>{x0=Math.min(x0,p.X/S);x1=Math.max(x1,p.X/S);y0=Math.min(y0,p.Y/S)}));
+  const plate=new THREE.Shape([new V2(-30,-20),new V2(30,-20),new V2(30,20),new V2(-30,20)]);
+  [-22,22].forEach(x=>{const h=new THREE.Path();h.absarc(x,0,2.25,0,6.2832);plate.holes.push(h)});
+  const wall=mgAll([new THREE.ExtrudeGeometry(plate,{depth:4,bevelEnabled:false,curveSegments:16}),...postGeo(0,0,3.9)]);
+  const rt=6,bt=6,bz=30,fz=v.D+25+GAP,Wb=Math.min(200,Math.max(80,(x1-x0)*.9+20)),py=k.y+KH.sl-y0,Hr=py+KH.hd/2+8,xm=(x0+x1)/2;
+  const gs=[-1,1].map(sg=>{const t=new THREE.Shape([new V2(-rt,0),new V2(-rt-bz,0),new V2(-rt,Hr*.6)]);
+    const g=new THREE.ExtrudeGeometry(t,{depth:6,bevelEnabled:false});g.rotateY(-Math.PI/2);g.translate(sg*(Wb/2-15)+3,0,0);return g});
+  const st=mgAll([bx(Wb,bt,fz+rt+bz,0,-bt/2,(fz-rt-bz)/2),bx(Wb,Hr,rt,0,Hr/2,-rt/2),...gs,...postGeo(k.x-xm,py,0)]);
+  st.rotateX(Math.PI/2);st.computeBoundingBox();st.translate(0,0,-st.boundingBox.min.z);
+  return{wall,stand:st,Wb,Hr}}
 function showWarn(){const e=document.getElementById('warn');if(e)e.textContent=v.warn.join(' ')}
 function buildLetter(){
-  letterPaths=textPaths(fcache[v.lf],v.ch||'T',v.lh,true);v.warn=[];
+  letterPaths=textPaths(fcache[v.lf],v.ch||'T',v.lh,true);v.warn=[];v.key=null;
   const parts=tree(letterPaths).Childs().length,AR=P=>Math.abs(P.reduce((s,c)=>s+CL.Clipper.Area(c),0));
   if(parts>1)v.warn.push(`Znak se skládá z ${parts} oddělených dílů, nedrží pohromadě (např. háček nebo tečka).`);
   if(letterPaths.length&&AR(off(off(letterPaths,-1.5),1.5))<.92*AR(letterPaths))v.warn.push('Tenké tahy pod 3 mm, písmeno bude křehké.');
   let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;
   if(v.shell&&g.attributes.position){ // záda zavřená, otevřeno zepředu; čelo je samostatný díl uložený na římse
-    const L=letterPaths,bk=Math.max(.8,Math.min(v.back,v.D-v.front-2));
+    const L=letterPaths,bk=Math.max(v.mnt?3:.8,Math.min(v.back,v.D-v.front-2));v.bk=bk;
     const cav=geo(off(L,-(v.wall+1.5)),v.D-v.front-bk+.04),rec=geo(off(L,-v.wall),v.front+.04),pg=geo(off(L,-v.wall-.15),v.front);
     if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}else v.warn.push('Dutina se do tohoto písmene nevejde. Zmenši stěnu, nebo zvětši výšku.');
     if(rec){rec.translate(0,0,v.D-v.front);g=sub(g,rec)}
     if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true}
+    if(v.mnt){
+      if(v.D-v.front-bk<KH.ht+1.5)v.warn.push('Dutina je příliš mělká pro držák (hlavička 3 mm). Zvětši hloubku nebo uber záda či čelo.');
+      else{const k=solveKey(L);
+        if(!k)v.warn.push('Pro držák se v písmeni nenašlo dost široké místo (potřeba tah aspoň asi 18 mm).');
+        else{v.key=k;if(Math.abs(k.x-k.cx)>6)v.warn.push('Těžiště je mimo osu zavěšení, písmeno se bude naklánět.');
+          const kg=geo(khPaths(k.x,k.y),bk+.04);if(kg){kg.translate(0,0,-.02);g=sub(g,kg)}}}
+    }
   }
   letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();showWarn();
 }
@@ -216,6 +250,7 @@ function panel(){
   ${v.shell?`<h2>Vzor čela</h2>
   <label><span>Vzor</span><select id="pt">${[['','Žádný'],['h','Vodorovné pruhy'],['v','Svislé pruhy'],['d','Šikmé pruhy'],['k','Šachovnice'],['o','Puntíky'],['s','Hvězdičky'],['r','Srdíčka']].map(([k,n])=>`<option value="${k}" ${k==v.pt?'selected':''}>${n}</option>`).join('')}</select></label>
   ${v.pt?R('pw','Šířka/velikost (mm)',1,20,v.pw,.5)+(v.pt=='k'?'':R('pg','Mezera (mm)',1,30,v.pg,.5))+R('ph','Výška (mm)',.4,3,v.ph,.2)+`<label><span>Barva vzoru</span><input type="color" id="pc" value="${v.pc}"></label><label><span>Export</span><select id="pm"><option value="0" ${v.pm?'':'selected'}>Vzor jako samostatný díl</option><option value="1" ${v.pm?'selected':''}>Čelo + vzor v jednom (výměna filamentu)</option></select></label>`:''}`:''}
+  ${v.shell?`<h2>Držák (zavěšení / stojánek)</h2><label><span>Držák</span><select id="mnt"><option value="0" ${v.mnt?'':'selected'}>Bez držáku</option><option value="1" ${v.mnt?'selected':''}>Klíčová dírka na zádech</option></select></label>`:''}
   <label><span>Písmeno v STL</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Všechny díly čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu (čelem nahoru)</option></select></label>
   <button id="go">Stáhnout STL (ZIP)</button><div id="msg"></div>`;
   loadFace(v.lf);loadFace(v.nf);showWarn();
@@ -224,7 +259,7 @@ let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
  ch:e=>{v.ch=e.value.toUpperCase();later(buildLetter)},lf:e=>{v.lf=e.value;buildLetter()},
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
- wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,
+ wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,mnt:e=>{v.mnt=+e.value;buildLetter()},
  lc:e=>letter.material.color.set(v.lc=e.value),
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -262,6 +297,9 @@ async function exportZip(btn){
       if(pg)add(`${v.ch}_celo_${hex(v.fc)}.stl`,flip(pg),`čelní deska, tloušťka ${v.front} mm, vkládá se do otevřeného čela písmene, tisk čelem dolů`);
       if(pp)add(`${v.ch}_vzor_${hex(v.pc)}.stl`,fh(pp),`vzor na čele, výška ${v.ph} mm, lepí se na čelní desku`);
     }
+    if(v.key){const m=mountParts();
+      add('drzak_zed.stl',m.wall,'destička na zeď: 2 otvory Ø4,5 mm, tiskni hlavičkou nahoru; pro těžší písmena raději použij šroub s hlavou do 9 mm');
+      add('drzak_stojan.stl',m.stand,`stojan: deska ${m.Wb.toFixed(0)} mm široká, opěrka ${m.Hr.toFixed(0)} mm vysoká; tiskni jak je (deska naplocho), 4+ stěny, PETG/ASA`)}
     const cnt={};
     items.forEach(it=>{const k=it.kind=='Jméno'?'jmeno':it.kind;cnt[k]=(cnt[k]||0)+1;
       add(`${k}${it.kind=='Jméno'?'':'_'+cnt[k]}_${hex(it.color)}.stl`,(h=>{const q=geo(it.paths,h);return v.ori?q.rotateY(Math.PI).translate(0,0,h):q})(it.T+it.P),
