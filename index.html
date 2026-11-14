@@ -40,6 +40,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {STLExporter} from 'three/addons/exporters/STLExporter.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {Brush,Evaluator,SUBTRACTION} from 'three-bvh-csg';
 import * as OT from 'opentype.js';
 import JSZip from 'jszip';
@@ -100,7 +101,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#a8cfee',pm:0};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -111,12 +112,26 @@ const dl=new THREE.DirectionalLight(0xffffff,1.6);dl.position.set(150,200,300);s
 const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.6});
 const letter=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.lc));scene.add(letter);
 const plate=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.fc));plate.visible=false;scene.add(plate);
+const pat=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.pc));pat.visible=false;scene.add(pat);
 const maxP=()=>v.shell?v.front-.4:6;
 function resize(){const w=cv.clientWidth,h=cv.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(cv);resize();
 (function loop(){requestAnimationFrame(loop);ctl.update();renderer.render(scene,cam)})();
 
 let letterPaths=[];
+function patPaths(){
+  const pl=off(letterPaths,-v.wall-.15);let x0=1e12,x1=-1e12,y0=1e12,y1=-1e12;
+  pl.forEach(c=>c.forEach(p=>{x0=Math.min(x0,p.X);x1=Math.max(x1,p.X);y0=Math.min(y0,p.Y);y1=Math.max(y1,p.Y)}));
+  const w=v.pw*S,P=w+v.pg*S,cx=(x0+x1)/2,cy=(y0+y1)/2,R=Math.hypot(x1-x0,y1-y0)/2+P,out=[];
+  if('hvd'.includes(v.pt)){const a={h:0,v:Math.PI/2,d:Math.PI/4}[v.pt],ca=Math.cos(a),sa=Math.sin(a);
+    for(let t=-R;t<R;t+=P)out.push([[-R,t],[R,t],[R,t+w],[-R,t+w]].map(([u,k])=>({X:Math.round(cx+u*ca-k*sa),Y:Math.round(cy+u*sa+k*ca)})))}
+  else if(v.pt=='k'){for(let i=0;x0+i*w<x1;i++)for(let j=0;y0+j*w<y1;j++)if((i+j)%2==0){const X=x0+i*w,Y=y0+j*w;out.push([{X,Y},{X:X+w,Y},{X:X+w,Y:Y+w},{X,Y:Y+w}])}}
+  else{const fn={o:()=>[circ(0,0,.5)],s:DEC['Hvězda'],r:DEC['Srdce']}[v.pt];let j=0;
+    for(let y=y0;y<y1+P;y+=P,j++)for(let x=x0+(j%2?P/2:0);x<x1+P;x+=P)fn().forEach(pg=>{const q=pg.map(([a,b])=>({X:Math.round(x+a*w),Y:Math.round(y+b*w)}));if(!CL.Clipper.Orientation(q))q.reverse();out.push(q)})}
+  return paths(tree(out,CL.ClipType.ctIntersection,pl));
+}
+function buildPattern(){pat.visible=false;if(!v.shell||!v.pt||!plate.visible)return;
+  const g=geo(patPaths(),v.ph);if(g){pat.geometry.dispose();pat.geometry=g;pat.position.z=v.D;pat.visible=true}}
 function buildLetter(){
   letterPaths=textPaths(fonts[LF[v.lf]],v.ch||'T',v.lh,true);
   let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;
@@ -127,7 +142,7 @@ function buildLetter(){
     if(rec){rec.translate(0,0,v.D-v.front);g=sub(g,rec)}
     if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true}
   }
-  letter.geometry.dispose();letter.geometry=g;placeZ();
+  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();
 }
 const placeZ=()=>{plate.position.z=v.D-v.front;items.forEach(it=>it.mesh.position.z=v.D-it.P)};
 function buildItem(it){
@@ -178,6 +193,9 @@ function panel(){
   <label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>
   ${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění (mm)',0.5,maxP(),it.P,.1)}${R('iv','Vůle (mm)',0,.5,it.clr,.05)}
   <button id="del" style="width:100%">Smazat díl</button>`:''}
+  ${v.shell?`<h2>Vzor čela</h2>
+  <label><span>Vzor</span><select id="pt">${[['','Žádný'],['h','Vodorovné pruhy'],['v','Svislé pruhy'],['d','Šikmé pruhy'],['k','Šachovnice'],['o','Puntíky'],['s','Hvězdičky'],['r','Srdíčka']].map(([k,n])=>`<option value="${k}" ${k==v.pt?'selected':''}>${n}</option>`).join('')}</select></label>
+  ${v.pt?R('pw','Šířka/velikost (mm)',1,20,v.pw,.5)+(v.pt=='k'?'':R('pg','Mezera (mm)',1,30,v.pg,.5))+R('ph','Výška (mm)',.4,3,v.ph,.2)+`<label><span>Barva vzoru</span><input type="color" id="pc" value="${v.pc}"></label><label><span>Export</span><select id="pm"><option value="0" ${v.pm?'':'selected'}>Vzor jako samostatný díl</option><option value="1" ${v.pm?'selected':''}>Čelo + vzor v jednom (výměna filamentu)</option></select></label>`:''}`:''}
   <label><span>Písmeno v STL</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Všechny díly čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu (čelem nahoru)</option></select></label>
   <button id="go">Stáhnout STL (ZIP)</button><div id="msg"></div>`;
 }
@@ -185,7 +203,7 @@ let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
  ch:e=>{v.ch=e.value.toUpperCase();later(buildLetter)},lf:e=>{v.lf=e.value;buildLetter()},
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
- wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,
+ wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,
  lc:e=>letter.material.color.set(v.lc=e.value),
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -209,12 +227,18 @@ async function exportZip(btn){
   try{
     const ex=new STLExporter(),z=new JSZip(),L=[];
     const add=(n,g,info)=>{const dv=ex.parse(new THREE.Mesh(g),{binary:true});z.file(n,new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength));L.push(n+' – '+info)};
-    let g=letter.geometry,pg=plate.visible?plate.geometry.clone().translate(0,0,v.D-v.front):null;
+    let g=letter.geometry,pg=plate.visible?plate.geometry.clone().translate(0,0,v.D-v.front):null,pp=pat.visible?pat.geometry.clone().translate(0,0,v.D):null;
     for(const it of items){const p=geo(off(it.paths,it.clr),it.P+.02);if(!p)continue;
-      p.rotateZ(it.mesh.rotation.z);p.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);g=sub(g,p);if(pg)pg=sub(pg,p)}
+      p.rotateZ(it.mesh.rotation.z);p.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);g=sub(g,p);if(pg)pg=sub(pg,p);if(pp){const p2=geo(off(it.paths,it.clr),it.P+v.ph+.04);p2.rotateZ(it.mesh.rotation.z);p2.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);pp=sub(pp,p2)}}
     const flip=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,v.D):q.clone(); // 1 = čelem dolů (T zůstává ve slicru vzpřímené), 0 = jako v náhledu
     add(`${v.ch}_pismeno_${hex(v.lc)}.stl`,flip(g),`písmeno ${v.ch}, ${v.shell?'skořepina':'plné'}, výška ${v.lh} mm, hloubka ${v.D} mm, tisk čelem dolů`);
-    if(pg)add(`${v.ch}_celo_${hex(v.fc)}.stl`,flip(pg),`čelní výplň, tloušťka ${v.front} mm, vkládá se do otevřeného čela písmene, tisk čelem dolů`);
+    const fh=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,v.D+v.ph):q.clone();
+    const mg=(a,b)=>mergeGeometries([a,b].map(q=>{q=q.clone();if(q.index)q=q.toNonIndexed();q.deleteAttribute('uv');return q}));
+    if(pg&&pp&&v.pm)add(`${v.ch}_celo+vzor_${hex(v.fc)}.stl`,fh(mg(pg,pp)),`čelo s vzorem v jednom dílu, tisk čelem dolů; výměna filamentu ve výšce ${v.ph} mm: spodních ${v.ph} mm barva vzoru ${v.pc}, výš barva čela ${v.fc}`);
+    else{
+      if(pg)add(`${v.ch}_celo_${hex(v.fc)}.stl`,flip(pg),`čelní deska, tloušťka ${v.front} mm, vkládá se do otevřeného čela písmene, tisk čelem dolů`);
+      if(pp)add(`${v.ch}_vzor_${hex(v.pc)}.stl`,fh(pp),`vzor na čele, výška ${v.ph} mm, lepí se na čelní desku`);
+    }
     const cnt={};
     items.forEach(it=>{const k=it.kind=='Jméno'?'jmeno':it.kind;cnt[k]=(cnt[k]||0)+1;
       add(`${k}${it.kind=='Jméno'?'':'_'+cnt[k]}_${hex(it.color)}.stl`,(h=>{const q=geo(it.paths,h);return v.ori?q.rotateY(Math.PI).translate(0,0,h):q})(it.T+it.P),
