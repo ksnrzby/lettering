@@ -100,7 +100,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',fsep:0,fc:'#ffffff',fillT:1.2,ori:1};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -120,15 +120,16 @@ let letterPaths=[];
 function buildLetter(){
   letterPaths=textPaths(fonts[LF[v.lf]],v.ch||'T',v.lh,true);
   let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;
-  if(v.shell&&g.attributes.position){
-    const inner=geo(off(letterPaths,-v.wall),v.D-v.front+.02);
-    if(inner){inner.translate(0,0,-.02);g=sub(g,inner)}
-    if(v.fsep){const ft=Math.min(v.fillT,v.front-.8),rec=geo(off(letterPaths,-v.wall),ft+.04),pg=geo(off(letterPaths,-v.wall-.15),ft);
-      if(rec&&pg){rec.translate(0,0,v.D-ft);g=sub(g,rec);plate.geometry.dispose();plate.geometry=pg;plate.userData.ft=ft;plate.visible=true}}
+  if(v.shell&&g.attributes.position){ // záda zavřená, otevřeno zepředu; čelo je samostatný díl uložený na římse
+    const L=letterPaths,bk=Math.max(.8,Math.min(v.back,v.D-v.front-2));
+    const cav=geo(off(L,-(v.wall+1.5)),v.D-v.front-bk+.04),rec=geo(off(L,-v.wall),v.front+.04),pg=geo(off(L,-v.wall-.15),v.front);
+    if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}
+    if(rec){rec.translate(0,0,v.D-v.front);g=sub(g,rec)}
+    if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true}
   }
   letter.geometry.dispose();letter.geometry=g;placeZ();
 }
-const placeZ=()=>{plate.position.z=v.D-(plate.userData.ft||v.front);items.forEach(it=>it.mesh.position.z=v.D-it.P)};
+const placeZ=()=>{plate.position.z=v.D-v.front;items.forEach(it=>it.mesh.position.z=v.D-it.P)};
 function buildItem(it){
   it.P=Math.min(it.P,maxP());
   it.paths=it.kind=='Jméno'?textPaths(fonts[NF[v.nf]],v.nm,it.size,false):decoPaths(it.kind,it.size);
@@ -164,7 +165,7 @@ function panel(){
   <label><span>Font</span><select id="lf">${opts(LF,v.lf)}</select></label>
   ${R('lh','Výška (mm)',80,200,v.lh)}${R('D','Hloubka (mm)',10,40,v.D)}
   <div class="row two"><button data-m="0" class="${v.shell?'':'on'}">Plné</button><button data-m="1" class="${v.shell?'on':''}">Skořepina</button></div>
-  ${v.shell?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2)+`<label><span>Čelo zvlášť</span><input type="checkbox" id="fsep" ${v.fsep?'checked':''}></label>`+(v.fsep?`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`+R('fillT','Výplň (mm)',0.8,Math.max(.8,v.front-.8),Math.min(v.fillT,v.front-.8),.2):''):''}
+  ${v.shell?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('back','Záda (mm)',1.2,6,v.back,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2)+`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`:''}
   <label><span>Barva</span><input type="color" id="lc" value="${v.lc}"></label>
   <h2>Jméno</h2>
   <label><span>Text</span><input type="text" id="nm" value="${v.nm}"></label>
@@ -177,14 +178,14 @@ function panel(){
   <label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>
   ${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění (mm)',0.5,maxP(),it.P,.1)}${R('iv','Vůle (mm)',0,.5,it.clr,.05)}
   <button id="del" style="width:100%">Smazat díl</button>`:''}
-  <label><span>Písmeno v STL</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu</option></select></label>
+  <label><span>Písmeno v STL</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Všechny díly čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu (čelem nahoru)</option></select></label>
   <button id="go">Stáhnout STL (ZIP)</button><div id="msg"></div>`;
 }
 let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
  ch:e=>{v.ch=e.value.toUpperCase();later(buildLetter)},lf:e=>{v.lf=e.value;buildLetter()},
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
- wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},fsep:e=>{v.fsep=e.checked;buildLetter();panel()},fc:e=>plate.material.color.set(v.fc=e.value),fillT:e=>{v.fillT=+e.value;later(buildLetter)},ori:e=>v.ori=+e.value,
+ wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,
  lc:e=>letter.material.color.set(v.lc=e.value),
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -208,15 +209,15 @@ async function exportZip(btn){
   try{
     const ex=new STLExporter(),z=new JSZip(),L=[];
     const add=(n,g,info)=>{const dv=ex.parse(new THREE.Mesh(g),{binary:true});z.file(n,new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength));L.push(n+' – '+info)};
-    let g=letter.geometry,pg=plate.visible?plate.geometry.clone().translate(0,0,v.D-plate.userData.ft):null;
+    let g=letter.geometry,pg=plate.visible?plate.geometry.clone().translate(0,0,v.D-v.front):null;
     for(const it of items){const p=geo(off(it.paths,it.clr),it.P+.02);if(!p)continue;
       p.rotateZ(it.mesh.rotation.z);p.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);g=sub(g,p);if(pg)pg=sub(pg,p)}
     const flip=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,v.D):q.clone(); // 1 = čelem dolů (T zůstává ve slicru vzpřímené), 0 = jako v náhledu
     add(`${v.ch}_pismeno_${hex(v.lc)}.stl`,flip(g),`písmeno ${v.ch}, ${v.shell?'skořepina':'plné'}, výška ${v.lh} mm, hloubka ${v.D} mm, tisk čelem dolů`);
-    if(pg)add(`${v.ch}_celo_${hex(v.fc)}.stl`,flip(pg),`čelní výplň, tloušťka ${plate.userData.ft} mm, vkládá se do vybrání v čele, tisk čelem dolů`);
+    if(pg)add(`${v.ch}_celo_${hex(v.fc)}.stl`,flip(pg),`čelní výplň, tloušťka ${v.front} mm, vkládá se do otevřeného čela písmene, tisk čelem dolů`);
     const cnt={};
     items.forEach(it=>{const k=it.kind=='Jméno'?'jmeno':it.kind;cnt[k]=(cnt[k]||0)+1;
-      add(`${k}${it.kind=='Jméno'?'':'_'+cnt[k]}_${hex(it.color)}.stl`,geo(it.paths,it.T+it.P),
+      add(`${k}${it.kind=='Jméno'?'':'_'+cnt[k]}_${hex(it.color)}.stl`,(h=>{const q=geo(it.paths,h);return v.ori?q.rotateY(Math.PI).translate(0,0,h):q})(it.T+it.P),
         `${it.kind}, velikost ${it.size} mm, výška dílu ${(it.T+it.P).toFixed(1)} mm, spodních ${it.P} mm zapadá do kapsy`)});
     z.file('seznam_dilu.txt',L.join('\n'));
     const a=document.createElement('a');a.href=URL.createObjectURL(await z.generateAsync({type:'blob'}));
