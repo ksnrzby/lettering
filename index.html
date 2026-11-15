@@ -45,6 +45,9 @@ button.primary{background:var(--ac);border-color:var(--ac);color:#fff;font-weigh
 .lt{position:relative}.lt>button:first-child{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;min-height:92px;background:var(--pn)}
 .lt img{width:60px;height:60px;object-fit:contain}.lt b{font-size:11px;font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lt .x{position:absolute;top:3px;right:3px;width:22px;height:22px;min-height:0;padding:0;border-radius:50%;line-height:1;font-size:14px;background:var(--in);color:var(--mut)}
+
+.chk{display:flex;align-items:center;gap:8px;grid-template-columns:none;font-size:13px;color:var(--tx)}.chk input{width:18px;height:18px}
+.pr{display:flex;align-items:center;gap:10px;margin:6px 0}.pr input[type=color]{width:56px;height:34px;flex:none}
 #msg{font-size:12.5px;color:var(--mut);margin-top:8px;min-height:18px}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 @media(max-width:1060px){body{height:auto;min-height:100%}main{display:flex;flex-direction:column}
@@ -68,6 +71,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {SVGLoader} from 'three/addons/loaders/SVGLoader.js';
 import {STLLoader} from 'three/addons/loaders/STLLoader.js';
 import {STLExporter} from 'three/addons/exporters/STLExporter.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
@@ -128,7 +132,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#a8cfee',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#ffffff',pm:0,warn:[],mnt:0,bk:3,key:null};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#a8cfee',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#ffffff',pm:0,warn:[],mnt:0,bk:3,key:null,img:'',isz:120,ix:0,iy:0,ir:0,imt:24,ovr:{},hid:{},lsz:150,lx:0,ly:0,lmin:.8,lmax:2.4,lneg:0,lres:.4,hasPlate:false};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -139,6 +143,7 @@ const dl=new THREE.DirectionalLight(0xffffff,1.6);dl.position.set(150,200,300);s
 const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.6});
 const letter=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.lc));scene.add(letter);
 const plate=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.fc));plate.visible=false;scene.add(plate);
+const fgroup=new THREE.Group();scene.add(fgroup);let svg=null,lit=null;
 const pat=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.pc));pat.visible=false;scene.add(pat);
 const maxP=()=>v.shell?v.front-.4:6;
 function resize(){const w=cv.clientWidth,h=cv.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
@@ -157,7 +162,7 @@ function patPaths(){
     for(let y=y0;y<y1+P;y+=P,j++)for(let x=x0+(j%2?P/2:0);x<x1+P;x+=P)fn().forEach(pg=>{const q=pg.map(([a,b])=>({X:Math.round(x+a*w),Y:Math.round(y+b*w)}));if(!CL.Clipper.Orientation(q))q.reverse();out.push(q)})}
   return paths(tree(out,CL.ClipType.ctIntersection,pl));
 }
-function buildPattern(){pat.visible=false;if(!v.shell||!v.pt||!plate.visible)return;
+function buildPattern(){pat.visible=false;if(!v.shell||!v.pt||!v.hasPlate||v.img)return;
   const g=geo(patPaths(),v.ph);if(g){pat.geometry.dispose();pat.geometry=g;pat.position.z=v.D;pat.visible=true}}
 const KH={hd:10,nd:6,ht:3,sl:14,clr:.3},GAP=2; // GAP = odstup písmene od zdi/opěrky, aby kořen trnu mohl mít náběh
 const mP=p=>{const q=p.map(([a,b])=>({X:Math.round(a*S),Y:Math.round(b*S)}));if(!CL.Clipper.Orientation(q))q.reverse();return q};
@@ -186,6 +191,65 @@ function mountParts(){
   const st=mgAll([bx(Wb,bt,fz+rt+bz,0,-bt/2,(fz-rt-bz)/2),bx(Wb,Hr,rt,0,Hr/2,-rt/2),...gs,...postGeo(k.x-xm,py,0)]);
   st.rotateX(Math.PI/2);st.computeBoundingBox();st.translate(0,0,-st.boundingBox.min.z);
   return{wall,stand:st,Wb,Hr}}
+/* ---------- obrázek na čelo: SVG po barvách a litofánie ---------- */
+const NS=1e6,colOf=g=>v.ovr[g.col]||g.col;
+function loadSvg(text){
+  const data=new SVGLoader().parse(text),layers=[];
+  for(const p of data.paths){const st=p.userData&&p.userData.style;if(!st||!st.fill||st.fill==='none'||st.fillOpacity===0)continue;
+    const cs=[];for(const sh of SVGLoader.createShapes(p)){const e=sh.extractPoints(24);cs.push({c:e.shape,h:0},...e.holes.map(c=>({c,h:1})))}
+    if(cs.length)layers.push({col:'#'+p.color.getHexString(),cs})}
+  if(!layers.length)throw new Error('V SVG nejsou žádné vyplněné tvary.');
+  let x0=1e12,x1=-1e12,y0=1e12,y1=-1e12;layers.forEach(l=>l.cs.forEach(o=>o.c.forEach(q=>{x0=Math.min(x0,q.x);x1=Math.max(x1,q.x);y0=Math.min(y0,-q.y);y1=Math.max(y1,-q.y)})));
+  const k=NS/Math.max(x1-x0,y1-y0,1e-9),cx=(x0+x1)/2,cy=(y0+y1)/2;
+  const L=layers.map(l=>({col:l.col,paths:l.cs.map(o=>{const q=o.c.map(p=>({X:Math.round((p.x-cx)*k),Y:Math.round((-p.y-cy)*k)}));if(CL.Clipper.Orientation(q)==!!o.h)q.reverse();return q})}));
+  let cover=[];const raw=new Map();
+  for(let i=L.length-1;i>=0;i--){const subj=paths(tree(L[i].paths)),vis=cover.length?paths(tree(subj,CL.ClipType.ctDifference,cover)):subj;
+    if(vis.length)raw.set(L[i].col,[...(raw.get(L[i].col)||[]),...vis]);cover=cover.length?paths(tree([...cover,...subj])):subj}
+  svg={raw};v.ovr={};v.hid={};
+}
+function clusters(){
+  if(!svg)return [];const cl=[],dist=(a,b)=>{const A=new THREE.Color(a),B=new THREE.Color(b);return Math.hypot(A.r-B.r,A.g-B.g,A.b-B.b)*255};
+  for(const c of svg.raw.keys()){const g=cl.find(x=>dist(x.col,c)<v.imt);g?g.m.push(c):cl.push({col:c,m:[c]})}
+  return cl.map(g=>({col:g.col,paths:g.m.length>1?paths(tree(g.m.flatMap(m=>svg.raw.get(m)))):svg.raw.get(g.m[0])}))}
+function frontParts(){
+  const P=off(letterPaths,-v.wall-.15),sc=v.isz/1000,a=v.ir*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),parts=[],all=[];
+  for(const g of clusters()){if(v.hid[g.col])continue;
+    const tp=g.paths.map(c=>c.map(p=>{const x=p.X*sc,y=p.Y*sc;return{X:Math.round(x*ca-y*sa+v.ix*S),Y:Math.round(x*sa+y*ca+v.iy*S)}}));
+    const clip=paths(tree(tp,CL.ClipType.ctIntersection,P));if(clip.length){parts.push({col:colOf(g),paths:clip});all.push(...clip)}}
+  parts.unshift({col:v.fc,paths:all.length?paths(tree(P,CL.ClipType.ctDifference,all)):P,base:true});return parts}
+function lithoGeo(res,col){
+  const P=off(letterPaths,-v.wall-.15);if(!P.length||!lit)return null;
+  let x0=1e12,x1=-1e12,y0=1e12,y1=-1e12;P.forEach(c=>c.forEach(p=>{x0=Math.min(x0,p.X/S);x1=Math.max(x1,p.X/S);y0=Math.min(y0,p.Y/S);y1=Math.max(y1,p.Y/S)}));
+  const W=Math.ceil((x1-x0)/res)+1,H=Math.ceil((y1-y0)/res)+1,cv2=()=>{const c=document.createElement('canvas');c.width=W;c.height=H;return c.getContext('2d',{willReadFrequently:true})};
+  const mx=cv2();mx.beginPath();for(const c of P){c.forEach((p,i)=>{const px=(p.X/S-x0)/res,py=(y1-p.Y/S)/res;i?mx.lineTo(px,py):mx.moveTo(px,py)});mx.closePath()}mx.fill('evenodd');
+  const md=mx.getImageData(0,0,W,H).data,gx=cv2();gx.fillStyle='#fff';gx.fillRect(0,0,W,H);
+  const wm=v.lsz,hm=wm*lit.img.height/lit.img.width;gx.drawImage(lit.img,((v.lx-wm/2)-x0)/res,(y1-(v.ly+hm/2))/res,wm/res,hm/res);
+  const gd=gx.getImageData(0,0,W,H).data,lo=v.lmin,hi=Math.max(lo+.1,Math.min(v.lmax,v.front)),hg=new Float32Array(W*H),ins=new Uint8Array(W*H);
+  for(let i=0;i<W*H;i++){ins[i]=md[i*4+3]>127?1:0;const g=(gd[i*4]*.299+gd[i*4+1]*.587+gd[i*4+2]*.114)/255;hg[i]=lo+(v.lneg?g:1-g)*(hi-lo)}
+  const inc=(i,j)=>i>=0&&j>=0&&i<W-1&&j<H-1&&ins[j*W+i]&&ins[j*W+i+1]&&ins[(j+1)*W+i]&&ins[(j+1)*W+i+1];
+  let n=0;for(let j=0;j<H-1;j++)for(let i=0;i<W-1;i++)if(inc(i,j)){n+=4;if(!inc(i-1,j))n+=2;if(!inc(i+1,j))n+=2;if(!inc(i,j-1))n+=2;if(!inc(i,j+1))n+=2}
+  const arr=new Float32Array(n*9);let o=0;const put=(a,b,c)=>{arr[o++]=a[0];arr[o++]=a[1];arr[o++]=a[2];arr[o++]=b[0];arr[o++]=b[1];arr[o++]=b[2];arr[o++]=c[0];arr[o++]=c[1];arr[o++]=c[2]};
+  const wall=(p,q,qb,pb)=>{put(p,q,qb);put(p,qb,pb)};
+  for(let j=0;j<H-1;j++)for(let i=0;i<W-1;i++)if(inc(i,j)){
+    const X0=x0+i*res,X1=X0+res,Y0=y1-j*res,Y1=Y0-res,h=(a,b)=>hg[(j+b)*W+i+a];
+    const at=[X0,Y0,h(0,0)],bt=[X1,Y0,h(1,0)],ct=[X1,Y1,h(1,1)],dt=[X0,Y1,h(0,1)],ab=[X0,Y0,0],bb=[X1,Y0,0],cb=[X1,Y1,0],db=[X0,Y1,0];
+    put(at,dt,ct);put(at,ct,bt);put(ab,cb,db);put(ab,bb,cb);
+    if(!inc(i-1,j))wall(at,dt,db,ab);        // vlevo (−x)
+    if(!inc(i+1,j))wall(ct,bt,bb,cb);        // vpravo (+x)
+    if(!inc(i,j-1))wall(bt,at,ab,bb);        // nahoře (+y)
+    if(!inc(i,j+1))wall(dt,ct,cb,db)}        // dole (−y)
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(arr,3));g.computeVertexNormals();
+  if(col){const c=new Float32Array(n*9);for(let k=0;k<n*3;k++){const z=arr[k*3+2],t=z>0?Math.min(1,Math.max(0,(hi-z)/(hi-lo))):1;c[k*3]=.22+.78*t;c[k*3+1]=.2+.76*t;c[k*3+2]=.16+.6*t}g.setAttribute('color',new THREE.BufferAttribute(c,3))}
+  return g}
+function buildFront(){
+  fgroup.children.slice().forEach(m=>{m.geometry.dispose();fgroup.remove(m)});
+  if(v.hasPlate)plate.visible=true;if(!v.shell||!v.hasPlate||!v.img)return;
+  const z=v.D-v.front;
+  if(v.img=='svg'&&svg){plate.visible=false;for(const p of frontParts()){const g=geo(p.paths,v.front);if(!g)continue;const m=new THREE.Mesh(g,mat(p.col));m.position.z=z;fgroup.add(m)}}
+  else if(v.img=='lit'&&lit){plate.visible=false;const g=lithoGeo(.8,1);if(g){const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.8}));m.position.z=z;fgroup.add(m)}}
+}
+function renderPal(){const e=document.getElementById('pal');if(!e)return;
+  e.innerHTML=clusters().map(g=>`<div class="pr"><input type="color" data-pc="${g.col}" value="${colOf(g)}"><label class="chk"><input type="checkbox" data-ps="${g.col}" ${v.hid[g.col]?'':'checked'}> zobrazit</label></div>`).join('')}
 function missing(font,t){return [...new Set([...t].filter(c=>c.trim()&&!font.charToGlyphIndex(c)))].join(' ')}
 function showWarn(){const e=document.getElementById('warn');if(e)e.textContent=[...v.warn,...(v.nwarn?['Jméno: font nemá znaky '+v.nwarn+', ve jménu se vynechají.']:[])].join(' ')}
 function buildLetter(){
@@ -193,13 +257,13 @@ function buildLetter(){
   const parts=tree(letterPaths).Childs().length,AR=P=>Math.abs(P.reduce((s,c)=>s+CL.Clipper.Area(c),0));
   if(parts>1)v.warn.push(`Znak se skládá z ${parts} oddělených dílů, nedrží pohromadě (např. háček nebo tečka).`);
   if(letterPaths.length&&AR(off(off(letterPaths,-1.5),1.5))<.92*AR(letterPaths))v.warn.push('Tenké tahy pod 3 mm, písmeno bude křehké.');
-  let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;
+  let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;v.hasPlate=false;
   if(v.shell&&g.attributes.position){ // záda zavřená, otevřeno zepředu; čelo je samostatný díl uložený na římse
     const L=letterPaths,bk=Math.max(v.mnt?3:.8,Math.min(v.back,v.D-v.front-2));v.bk=bk;
     const cav=geo(off(L,-(v.wall+1.5)),v.D-v.front-bk+.04),rec=geo(off(L,-v.wall),v.front+.04),pg=geo(off(L,-v.wall-.15),v.front);
     if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}else v.warn.push('Dutina se do tohoto písmene nevejde. Zmenši stěnu, nebo zvětši výšku.');
     if(rec){rec.translate(0,0,v.D-v.front);g=sub(g,rec)}
-    if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true}
+    if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true;v.hasPlate=true}
     if(v.mnt){
       if(v.D-v.front-bk<KH.ht+1.5)v.warn.push('Dutina je příliš mělká pro držák (hlavička 3 mm). Zvětši hloubku nebo uber záda či čelo.');
       else{const k=solveKey(L);
@@ -208,7 +272,7 @@ function buildLetter(){
           const kg=geo(khPaths(k.x,k.y),bk+.04);if(kg){kg.translate(0,0,-.02);g=sub(g,kg)}}}
     }
   }
-  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();showWarn();
+  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();buildFront();showWarn();
 }
 const placeZ=()=>{plate.position.z=v.D-v.front;items.forEach(it=>it.mesh.position.z=v.D-it.P)};
 function footprint(g,P){
@@ -297,7 +361,10 @@ function left(){
   const P=`<label><span>Vzor</span><select id="pt">${[['','Žádný'],['h','Vodorovné pruhy'],['v','Svislé pruhy'],['d','Šikmé pruhy'],['k','Šachovnice'],['o','Puntíky'],['s','Hvězdičky'],['r','Srdíčka']].map(([k,n])=>`<option value="${k}" ${k==v.pt?'selected':''}>${n}</option>`).join('')}</select></label>`+
     (v.pt?R('pw','Šířka (mm)',1,20,v.pw,.5)+(v.pt=='k'?'':R('pg','Mezera (mm)',1,30,v.pg,.5))+R('ph','Výška (mm)',.4,3,v.ph,.2)+`<label><span>Barva vzoru</span><input type="color" id="pc" value="${v.pc}"></label><label><span>Export</span><select id="pm"><option value="0" ${v.pm?'':'selected'}>Vzor jako samostatný díl</option><option value="1" ${v.pm?'selected':''}>Čelo + vzor v jednom (výměna filamentu)</option></select></label>`:'');
   const M=`<label><span>Držák</span><select id="mnt"><option value="0" ${v.mnt?'':'selected'}>Bez držáku</option><option value="1" ${v.mnt?'selected':''}>Klíčová dírka na zádech</option></select></label><p class="note">Klíčová dírka je na zavěšení nebo na stojánek, v exportu přibude destička na zeď a stojan.</p>`;
-  return card('Písmeno',L,1)+card('Konstrukce',K,2)+card('Jméno',N,3)+(v.shell?card('Vzor čela',P,4)+card('Držák',M,5):'');
+  const IMG=`<label><span>Režim</span><select id="imode"><option value="" ${v.img?'':'selected'}>Bez obrázku</option><option value="svg" ${v.img=='svg'?'selected':''}>Barevný obrázek (SVG)</option><option value="lit" ${v.img=='lit'?'selected':''}>Litofánie (fotka)</option></select></label>`+
+    (v.img=='svg'?`<button id="svgup" class="wide">${svg?'Nahrát jiné SVG…':'Nahrát SVG…'}</button><input type="file" id="svgf" accept=".svg,image/svg+xml" hidden>`+(svg?R('zs','Velikost (mm)',20,250,v.isz)+R('zx','Posun X',-120,120,v.ix)+R('zy','Posun Y',-120,120,v.iy)+R('zr','Otočení (°)',-180,180,v.ir)+R('zt','Slučování barev',0,120,v.imt)+`<div id="pal"></div><p class="note">Každá barva se exportuje jako samostatné STL pro AMS. Barvu můžeš přepsat, nebo ji skrýt (pak je tam barva čela). Vzor čela se u obrázku nepoužije.</p>`:`<p class="note">SVG musí mít vyplněné tvary. Čáry bez výplně se nepřenesou.</p>`):'')+
+    (v.img=='lit'?`<button id="litup" class="wide">${lit?'Nahrát jinou fotku…':'Nahrát fotku…'}</button><input type="file" id="litf" accept="image/*" hidden>`+(lit?R('lsz','Šířka fotky (mm)',30,300,v.lsz)+R('lx','Posun X',-120,120,v.lx)+R('ly','Posun Y',-120,120,v.ly)+R('lmin','Nejtenčí (mm)',.4,3,v.lmin,.1)+R('lmax','Nejtlustší (mm)',.8,6,v.lmax,.1)+`<label class="chk"><input type="checkbox" id="lneg" ${v.lneg?'checked':''}> Negativ (tmavé místo tenké)</label><label><span>Rozlišení</span><select id="lres">${[['.3','0,3 mm (jemné, velký soubor)'],['.4','0,4 mm'],['.5','0,5 mm'],['.8','0,8 mm (náhled)']].map(([k,n])=>`<option value="${k}" ${+k==v.lres?'selected':''}>${n}</option>`).join('')}</select></label><p class="note">Tmavá místa jsou tlustší a světlo jimi prochází hůř. Tiskni z bílého filamentu rovnou stranou dolů, vrstva 0,08 až 0,12 mm, 100% výplň. Nejtlustší místo nesmí přesáhnout tloušťku čela. Dekorace se na litofánii jen lepí, bez kapes.</p>`:`<p class="note">Nahraj fotku (PNG nebo JPG). Ořízne se do tvaru čela.</p>`):'');
+  return card('Písmeno',L,1)+card('Konstrukce',K,2)+card('Jméno',N,3)+(v.shell?card('Vzor čela',P,4)+card('Držák',M,5)+card('Obrázek na čelo',IMG,6):'');
 }
 function right(){
   const it=sel;
@@ -309,13 +376,16 @@ function right(){
 }
 function panel(){
   const sl=[pnl.scrollTop,pnr.scrollTop];pnl.innerHTML=left();pnr.innerHTML=right();pnl.scrollTop=sl[0];pnr.scrollTop=sl[1];
-  loadFace(v.lf);loadFace(v.nf);showWarn();
+  loadFace(v.lf);loadFace(v.nf);showWarn();renderPal();
 }
 let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
  ch:e=>{v.ch=e.value.toUpperCase();later(buildLetter)},lf:e=>{v.lf=e.value;buildLetter()},
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
- wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,stlf:async e=>{const f=e.files[0];if(!f)return;let g,buf;try{buf=await f.arrayBuffer();g=new STLLoader().parse(buf)}catch(err){document.getElementById('msg').textContent='STL se nepodařilo načíst: '+err.message;return}e.value='';importModel(g,f.name,buf)},mnt:e=>{v.mnt=+e.value;buildLetter()},
+ wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>{plate.material.color.set(v.fc=e.value);if(v.img)buildFront()},ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,imode:e=>{v.img=e.value;buildFront();panel()},zs:e=>{v.isz=+e.value;later(buildFront)},zx:e=>{v.ix=+e.value;later(buildFront)},zy:e=>{v.iy=+e.value;later(buildFront)},zr:e=>{v.ir=+e.value;later(buildFront)},zt:e=>{v.imt=+e.value;later(()=>{buildFront();renderPal()})},
+ lsz:e=>{v.lsz=+e.value;later(buildFront)},lx:e=>{v.lx=+e.value;later(buildFront)},ly:e=>{v.ly=+e.value;later(buildFront)},lmin:e=>{v.lmin=+e.value;later(buildFront)},lmax:e=>{v.lmax=+e.value;later(buildFront)},lneg:e=>{v.lneg=e.checked?1:0;buildFront()},lres:e=>v.lres=+e.value,
+ svgf:async e=>{const f=e.files[0];if(!f)return;try{loadSvg(await f.text());v.img='svg'}catch(err){document.getElementById('msg').textContent='SVG se nepodařilo načíst: '+err.message;return}e.value='';buildFront();panel()},
+ litf:async e=>{const f=e.files[0];if(!f)return;try{const img=new Image();img.src=URL.createObjectURL(f);await img.decode();lit={img};v.img='lit'}catch(err){document.getElementById('msg').textContent='Fotku se nepodařilo načíst: '+err.message;return}e.value='';buildFront();panel()},stlf:async e=>{const f=e.files[0];if(!f)return;let g,buf;try{buf=await f.arrayBuffer();g=new STLLoader().parse(buf)}catch(err){document.getElementById('msg').textContent='STL se nepodařilo načíst: '+err.message;return}e.value='';importModel(g,f.name,buf)},mnt:e=>{v.mnt=+e.value;buildLetter()},
  lc:e=>letter.material.color.set(v.lc=e.value),
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -323,7 +393,8 @@ const H={
  is:e=>{sel.size=+e.value;later(()=>buildItem(sel))},ir:e=>{sel.rot=+e.value;sel.mesh.rotation.z=sel.rot*Math.PI/180},
  it:e=>{sel.T=+e.value;later(()=>buildItem(sel))},
  ip:e=>{sel.P=+e.value;later(()=>buildItem(sel))},iv:e=>sel.clr=+e.value};
-for(const pn of [pnl,pnr])pn.addEventListener('input',e=>{const o=e.target.nextElementSibling;if(o&&o.tagName=='OUTPUT')o.textContent=e.target.value;H[e.target.id]?.(e.target)});
+for(const pn of [pnl,pnr])pn.addEventListener('input',e=>{const d=e.target.dataset;if(d.pc){v.ovr[d.pc]=e.target.value;buildFront();return}if(d.ps){v.hid[d.ps]=!e.target.checked;buildFront();return}
+  const o=e.target.nextElementSibling;if(o&&o.tagName=='OUTPUT')o.textContent=e.target.value;H[e.target.id]?.(e.target)});
 for(const pn of [pnl,pnr])pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ro){if(b.dataset.ro=='x')sel.ox=(sel.ox+1)%4;else if(b.dataset.ro=='y')sel.oy=(sel.oy+1)%4;else sel.ox=(sel.ox+2)%4;buildItem(sel);return}
   if(b.dataset.lib){libAdd(+b.dataset.lib);return}
@@ -334,6 +405,8 @@ for(const pn of [pnl,pnr])pn.addEventListener('click',e=>{const b=e.target.close
   else if(b.dataset.s)select(items.find(i=>i.id==b.dataset.s));
   else if(b.id=='addn'&&!items.some(i=>i.kind=='Jméno'))addItem('Jméno');
   else if(b.id=='del'){scene.remove(sel.mesh);items.splice(items.indexOf(sel),1);select(items[0]||null)}
+  else if(b.id=='svgup')document.getElementById('svgf').click();
+  else if(b.id=='litup')document.getElementById('litf').click();
   else if(b.id=='upl')document.getElementById('stlf').click();
   else if(b.id=='go')exportZip(b)});
 
@@ -344,18 +417,22 @@ async function exportZip(btn){
   try{
     const ex=new STLExporter(),z=new JSZip(),L=[];
     const add=(n,g,info)=>{const dv=ex.parse(new THREE.Mesh(g),{binary:true});z.file(n,new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength));L.push(n+' – '+info)};
-    let g=letter.geometry,pg=plate.visible?plate.geometry.clone().translate(0,0,v.D-v.front):null,pp=pat.visible?pat.geometry.clone().translate(0,0,v.D):null;
+    const fl=[],zF=v.D-v.front;
+    if(v.hasPlate){
+      if(v.img=='svg'&&svg){for(const p of frontParts()){const q=geo(p.paths,v.front);if(q)fl.push({g:q.translate(0,0,zF),pk:1,name:`${v.ch}_celo_${p.base?'zaklad_':''}${hex(p.col)}.stl`,info:`čelo, barva ${p.col}${p.base?' (základ)':''}, tloušťka ${v.front} mm, tisk čelem dolů`})}}
+      else if(v.img=='lit'&&lit){const q=lithoGeo(v.lres);if(q)fl.push({g:q,lit:1,name:`${v.ch}_celo_litofanie.stl`,info:`litofánie ${v.lmin}–${Math.min(v.lmax,v.front)} mm, rozlišení ${v.lres} mm, tiskni rovnou stranou dolů, bílý filament, vrstva 0,08–0,12 mm, 100% výplň`})}
+      else fl.push({g:plate.geometry.clone().translate(0,0,zF),pk:1,plain:1,name:`${v.ch}_celo_${hex(v.fc)}.stl`,info:`čelní deska, tloušťka ${v.front} mm, vkládá se do otevřeného čela písmene, tisk čelem dolů`})}
+    let g=letter.geometry,pp=pat.visible?pat.geometry.clone().translate(0,0,v.D):null;
     for(const it of items){const p=geo(off(it.paths,it.clr),it.P+.02);if(!p)continue;
-      p.rotateZ(it.mesh.rotation.z);p.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);g=sub(g,p);if(pg)pg=sub(pg,p);if(pp){const p2=geo(off(it.paths,it.clr),it.P+v.ph+.04);p2.rotateZ(it.mesh.rotation.z);p2.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);pp=sub(pp,p2)}}
+      p.rotateZ(it.mesh.rotation.z);p.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);g=sub(g,p);fl.forEach(f=>{if(f.pk)f.g=sub(f.g,p)});if(pp){const p2=geo(off(it.paths,it.clr),it.P+v.ph+.04);p2.rotateZ(it.mesh.rotation.z);p2.translate(it.mesh.position.x,it.mesh.position.y,v.D-it.P);pp=sub(pp,p2)}}
     const flip=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,v.D):q.clone(); // 1 = čelem dolů (T zůstává ve slicru vzpřímené), 0 = jako v náhledu
     add(`${v.ch}_pismeno_${hex(v.lc)}.stl`,flip(g),`písmeno ${v.ch}, ${v.shell?'skořepina':'plné'}, výška ${v.lh} mm, hloubka ${v.D} mm, tisk čelem dolů`);
     const fh=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,v.D+v.ph):q.clone();
     const mg=(a,b)=>mergeGeometries([a,b].map(q=>{q=q.clone();if(q.index)q=q.toNonIndexed();q.deleteAttribute('uv');return q}));
-    if(pg&&pp&&v.pm)add(`${v.ch}_celo+vzor_${hex(v.fc)}.stl`,fh(mg(pg,pp)),`čelo s vzorem v jednom dílu, tisk čelem dolů; výměna filamentu ve výšce ${v.ph} mm: spodních ${v.ph} mm barva vzoru ${v.pc}, výš barva čela ${v.fc}`);
-    else{
-      if(pg)add(`${v.ch}_celo_${hex(v.fc)}.stl`,flip(pg),`čelní deska, tloušťka ${v.front} mm, vkládá se do otevřeného čela písmene, tisk čelem dolů`);
-      if(pp)add(`${v.ch}_vzor_${hex(v.pc)}.stl`,fh(pp),`vzor na čele, výška ${v.ph} mm, lepí se na čelní desku`);
-    }
+    const pl0=fl.find(f=>f.plain);
+    if(pl0&&pp&&v.pm){add(`${v.ch}_celo+vzor_${hex(v.fc)}.stl`,fh(mg(pl0.g,pp)),`čelo s vzorem v jednom dílu, tisk čelem dolů; výměna filamentu ve výšce ${v.ph} mm: spodních ${v.ph} mm barva vzoru ${v.pc}, výš barva čela ${v.fc}`);fl.splice(fl.indexOf(pl0),1)}
+    else if(pp)add(`${v.ch}_vzor_${hex(v.pc)}.stl`,fh(pp),`vzor na čele, výška ${v.ph} mm, lepí se na čelní desku`);
+    for(const f of fl)add(f.name,f.lit?f.g:flip(f.g),f.info);
     if(v.key){const m=mountParts();
       add('drzak_zed.stl',m.wall,'destička na zeď: 2 otvory Ø4,5 mm, tiskni hlavičkou nahoru; pro těžší písmena raději použij šroub s hlavou do 9 mm');
       add('drzak_stojan.stl',m.stand,`stojan: deska ${m.Wb.toFixed(0)} mm široká, opěrka ${m.Hr.toFixed(0)} mm vysoká; tiskni jak je (deska naplocho), 4+ stěny, PETG/ASA`)}
