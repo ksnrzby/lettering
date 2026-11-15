@@ -149,7 +149,7 @@ const pat=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.pc));pat.visible=false
 const maxP=()=>v.shell?v.front-.4:6;
 const bmesh=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.bc));bmesh.visible=false;scene.add(bmesh);
 const faceTop=()=>v.D-v.rcs,embed=it=>v.rel?0:it.P,olT=it=>it.ol?it.ot:0,baseOf=it=>it.src?(it.sil||it.paths):it.paths;
-function ringPaths(it){if(!it.ol)return[];if(it.tag)return paths(tree(it.bgp,CL.ClipType.ctDifference,it.paths));const b=baseOf(it);return paths(tree(off(b,it.oo),CL.ClipType.ctDifference,v.rel?b:off(b,it.clr)))}
+function ringPaths(it){if(!it.ol||!it.paths.length)return[];if(it.tag)return clipLocal(it,paths(tree(it.bgp,CL.ClipType.ctDifference,it.paths)));const b=baseOf(it);return clipLocal(it,paths(tree(off(b,it.oo),CL.ClipType.ctDifference,v.rel?b:off(b,it.clr))))}
 const itemArea=it=>it.tag?(it.bgp.length?it.bgp:it.paths):it.ol?off(baseOf(it),it.oo):baseOf(it);
 function initItem(it){it.rmesh=new THREE.Mesh(new THREE.BufferGeometry(),mat(it.oc));it.rmesh.visible=false;it.mesh.add(it.rmesh)}
 function updRing(it){const m=it.rmesh;m.visible=false;if(!it.ol)return;const g=geo(ringPaths(it),it.ot);if(!g)return;
@@ -289,7 +289,7 @@ function buildLetter(){
           const kg=geo(khPaths(k.x,k.y),bk+.04);if(kg){kg.translate(0,0,-.02);g=sub(g,kg)}}}
     }
   }
-  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();buildFront();buildBoard();showWarn();
+  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();buildFront();if(v.rcs>0)items.forEach(buildItem);buildBoard();showWarn();
 }
 const placeZ=()=>{plate.position.z=faceTop()-v.front;items.forEach(it=>it.mesh.position.z=faceTop()-embed(it))};
 function footprint(g,P){
@@ -446,6 +446,9 @@ const ZS=[
 ZOD.forEach((n,i)=>dk('Znamení',n,['#2f3a8f','#ffd166'],()=>{const d=gc(0,0,.5,72),ink=gU(...ZS[i]().map(p=>stk(p.map(([x,y])=>[x*.9,y*.9]),.07)));
   return[Ly(0,0,d),Ly(1,1,gU(gD(gr(d,-.03),gr(d,-.09)),gI(ink,gr(d,-.1))))]},40));
 DEKO.forEach(d=>{if(d.cat=='Znamení')d.sub=ZDATE[ZOD.indexOf(d.n)]});
+const clipOn=it=>v.rcs>0&&it.clip!==0&&letterPaths.length;
+function clipLocal(it,P){if(!clipOn(it)||!P.length)return P;const A=off(letterPaths,-v.wall),a=-it.rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),px=it.mesh.position.x*S,py=it.mesh.position.y*S;
+  return gI(P,A.map(p=>p.map(q=>{const x=q.X-px,y=q.Y-py;return{X:Math.round(x*c-y*sn),Y:Math.round(x*sn+y*c)}})))}
 const decoRaw={};
 function decoLayers(key,size){
   const D=DEKO.find(d=>d.k==key);if(!decoRaw[key]){const L=D.gen();let x0=1e18,x1=-1e18,y0=1e18,y1=-1e18;
@@ -464,7 +467,7 @@ function domeGeo(P,top,T){const n=3,hs=T*.6,base=top-hs,step=Math.min(.7,T*.25),
   return mergeGeometries(parts.map(q=>{q=q.index?q.toNonIndexed():q;q.deleteAttribute('uv');return q}))}
 const decoTop=it=>embed(it)+olT(it)+it.T;
 function buildDeco(it){
-  const L=decoLayers(it.deco,it.size);it.layers=L;it.P=Math.min(it.P,maxP());
+  const L=decoLayers(it.deco,it.size).map(l=>({...l,P:clipLocal(it,l.P)})).filter(l=>l.P.length);it.layers=L;if(!L.length){it.paths=[];it.mesh.geometry=new THREE.BufferGeometry();(it.lm||[]).forEach(m=>{it.mesh.remove(m)});it.lm=[];updRing(it);return}it.P=Math.min(it.P,maxP());
   it.paths=L.map(l=>l.P).reduce((a,b)=>paths(tree(a,CL.ClipType.ctUnion,b)));
   const top=decoTop(it);
   (it.lm||[]).forEach(m=>{it.mesh.remove(m);m.geometry.dispose()});it.lm=[];
@@ -507,12 +510,12 @@ function shapePaths(it){
     for(let i=1;i<n;i++){const x=cx-W/2+i*(W/n),len=i%5==0?4.2:2.4;holes.push(rc(x-.5,y0-1,x+.5,y0+len))}
     return D2(U,holes)}
   return[]}
-function buildTag(it){const fn=fcache[it.font]||fcache[v.nf];it.paths=textPaths(fn,it.text||' ',it.size,false);it.bgp=shapePaths(it);it.ol=it.bgp.length?1:0}
+function buildTag(it){const fn=fcache[it.font]||fcache[v.nf];it.paths=textPaths(fn,it.text||' ',it.size,false);it.bgp=shapePaths(it);it.ol=it.bgp.length?1:0;it.paths=clipLocal(it,it.paths);it.bgp=clipLocal(it,it.bgp)}
 function buildItem(it){
   if(it.src)return buildModel(it);
   if(it.deco)return buildDeco(it);
   it.P=Math.min(it.P,maxP());
-  if(it.tag)buildTag(it);else it.paths=it.kind=='Jméno'?textPaths(fcache[v.nf],v.nm,it.size,false):decoPaths(it.kind,it.size);
+  if(it.tag)buildTag(it);else it.paths=clipLocal(it,it.kind=='Jméno'?textPaths(fcache[v.nf],v.nm,it.size,false):decoPaths(it.kind,it.size));
   if(it.kind=='Jméno'){v.nwarn=missing(fcache[v.nf],v.nm);showWarn()}
   it.mesh.geometry.dispose();it.mesh.geometry=geo(it.paths,embed(it)+olT(it)+it.T)||new THREE.BufferGeometry();
   it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=faceTop()-embed(it);updRing(it);laterB();
@@ -537,7 +540,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   off0.copy(pt).sub(sel.mesh.position);drag=true;ctl.enabled=false;renderer.domElement.setPointerCapture(e.pointerId)});
 renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;ray.setFromCamera(ndc(e),cam);
   if(ray.ray.intersectPlane(pl,pt)){sel.mesh.position.x=pt.x-off0.x;sel.mesh.position.y=pt.y-off0.y}});
-const end=()=>{if(drag)laterB();drag=false;ctl.enabled=true};
+const end=()=>{if(drag){if(v.rcs>0&&sel&&sel.clip!==0)buildItem(sel);laterB()}drag=false;ctl.enabled=true};
 renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
 
 /* ---------- panel ---------- */
@@ -580,7 +583,7 @@ const TAGUI=it=>`<label><span>Text</span><input type="text" id="ttx" value="${it
 function right(){
   const it=sel;
   const parts=`<div id="list">${items.map(i=>`<button data-s="${i.id}" class="${i===sel?'on':''}">${i.label||i.kind}</button>`).join('')||'<p class="note">Zatím žádné díly.</p>'}</div>`;
-  const props=it?`${it.deco?DECUI(it):`<label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>`}${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění',0.5,maxP(),it.P,.1)}${R('iv','Vůle',0,.5,it.clr,.05)}${it.tag?TAGUI(it):OLUI(it)}<button id="del" class="wide danger">Smazat díl</button>`:`<p class="note">Vyber díl v seznamu, nebo na něj klikni v náhledu.</p>`;
+  const props=it?`${it.deco?DECUI(it):`<label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>`}${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění',0.5,maxP(),it.P,.1)}${R('iv','Vůle',0,.5,it.clr,.05)}${v.rcs>0?`<label class="chk"><input type="checkbox" id="clp" ${it.clip!==0?'checked':''}> Oříznout přesah mimo okraj písmene</label>`:''}${it.tag?TAGUI(it):OLUI(it)}<button id="del" class="wide danger">Smazat díl</button>`:`<p class="note">Vyber díl v seznamu, nebo na něj klikni v náhledu.</p>`;
   const L=`<button id="upl" class="wide" style="margin-top:0">Nahrát STL…</button><input type="file" id="stlf" accept=".stl" hidden>`+(lib.length?`<div class="lib">${lib.map(d=>`<div class="lt"><button data-lib="${d.id}" title="Přidat do návrhu"><img src="${d.thumb||''}" alt=""><b>${d.name}</b></button><button class="x" data-libdel="${d.id}" title="Odebrat z knihovny" aria-label="Odebrat">×</button></div>`).join('')}</div>`:`<p class="note">Knihovna je prázdná. Nahraný STL se tady uloží a příště ho jen přidáš do návrhu.</p>`);
   const E=`<label><span>Orientace</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu</option></select></label><p class="note">ZIP obsahuje samostatný STL pro každý díl a seznam dílů s barvami.</p><div id="msg"></div>`;
   const dtab=v.dcat||DCATS[0],DC=`<div class="seg" style="grid-template-columns:repeat(3,1fr)">${DCATS.map(c=>`<button data-dcat="${c}" class="${c==dtab?'on':''}">${c}</button>`).join('')}</div><div class="lib">${DEKO.filter(d=>d.cat==dtab).map(d=>`<div class="lt"><button data-dk="${d.k}" title="${d.sub||'Přidat do návrhu'}"><img src="${dthumb(d)}" alt=""><b>${d.n}</b></button></div>`).join('')}</div><p class="note">Každá dekorace je z vrstev v různých barvách (barvy změníš po kliknutí na díl). Zaoblený profil dělá z plochého dílu polštářek.</p>`;
@@ -611,7 +614,7 @@ const H={
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
  ic:e=>sel.mesh.material.color.set(sel.color=e.value),
- is:e=>{sel.size=+e.value;later(()=>buildItem(sel))},ir:e=>{sel.rot=+e.value;sel.mesh.rotation.z=sel.rot*Math.PI/180;laterB()},
+ is:e=>{sel.size=+e.value;later(()=>buildItem(sel))},ir:e=>{sel.rot=+e.value;sel.mesh.rotation.z=sel.rot*Math.PI/180;if(v.rcs>0&&sel.clip!==0)later(()=>buildItem(sel));laterB()},clp:e=>{sel.clip=e.checked?1:0;buildItem(sel)},
  it:e=>{sel.T=+e.value;later(()=>buildItem(sel))},
  ip:e=>{sel.P=+e.value;later(()=>buildItem(sel))},iv:e=>sel.clr=+e.value};
 for(const pn of [pnl,pnr])pn.addEventListener('input',e=>{const d=e.target.dataset;if(d.pc){v.ovr[d.pc]=e.target.value;buildFront();return}if(d.ps){v.hid[d.ps]=!e.target.checked;buildFront();return}
