@@ -46,6 +46,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {STLLoader} from 'three/addons/loaders/STLLoader.js';
 import {STLExporter} from 'three/addons/exporters/STLExporter.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {Brush,Evaluator,SUBTRACTION} from 'three-bvh-csg';
@@ -97,6 +98,14 @@ const DEC={
  'Srdce':()=>[Array.from({length:60},(_,i)=>{const t=i/60*6.2832;return[16*Math.sin(t)**3/34,(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/34+.02]})],
  'Měsíc':()=>[circ(0,0,.5),circ(.24,.1,.42)],
  'Balón':()=>[circ(0,.17,.33),[[-.13,-.1],[.13,-.1],[.03,-.24],[-.03,-.24]],[[-.025,-.22],[.025,-.22],[.025,-.34],[-.025,-.34]],[[-.09,-.5],[.09,-.5],[.09,-.34],[-.09,-.34]]],
+ 'Květina':()=>[circ(0,0,.17,24),...[0,1,2,3,4].map(i=>{const a=Math.PI/2+i*1.2566;return circ(.26*Math.cos(a),.26*Math.sin(a),.18,24)})],
+ 'Slunce':()=>[circ(0,0,.26,36),...Array.from({length:12},(_,i)=>{const a=i*Math.PI/6,f=(q,d)=>[q*Math.cos(a+d),q*Math.sin(a+d)];return [f(.25,-.13),f(.5,0),f(.25,.13)]})],
+ 'Králík':()=>[ell(0,-.2,.2,.24),circ(0,.1,.17),ell(-.08,.38,.06,.15),ell(.08,.38,.06,.15),circ(.21,-.34,.07)],
+ 'Tlapka':()=>[ell(0,-.15,.23,.19),circ(-.32,.06,.1),circ(-.12,.22,.1),circ(.12,.22,.1),circ(.32,.06,.1)],
+ 'Kapka':()=>[circ(0,-.2,.28),[[-.265,-.1],[0,.5],[.265,-.1]]],
+ 'Motýl':()=>[ell(-.22,.14,.2,.26),ell(.22,.14,.2,.26),ell(-.16,-.22,.14,.2),ell(.16,-.22,.14,.2),ell(0,0,.05,.36)],
+ 'Koruna':()=>[[[-.5,-.3],[.5,-.3],[.5,.1],[.25,-.05],[0,.3],[-.25,-.05],[-.5,.1]],circ(-.5,.12,.06,16),circ(0,.34,.06,16),circ(.5,.12,.06,16)],
+ 'Duha':()=>[Array.from({length:21},(_,i)=>{const t=i*Math.PI/20;return[.5*Math.cos(t),.5*Math.sin(t)-.2]}).concat(Array.from({length:21},(_,i)=>{const t=Math.PI-i*Math.PI/20;return[.24*Math.cos(t),.24*Math.sin(t)-.2]})),circ(-.37,-.2,.13,24),circ(.37,-.2,.13,24)],
  'Medvídek':()=>[circ(0,.14,.2),circ(-.15,.31,.08),circ(.15,.31,.08),ell(0,-.14,.2,.23),ell(-.24,-.1,.07,.14),ell(.24,-.1,.07,.14),circ(-.12,-.36,.1),circ(.12,-.36,.1)]};
 function decoPaths(type,size){
   const P=DEC[type]().map(p=>{const q=p.map(([x,y])=>({X:Math.round(x*size*S),Y:Math.round(y*size*S)}));if(!CL.Clipper.Orientation(q))q.reverse();return q});
@@ -190,7 +199,32 @@ function buildLetter(){
   letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();showWarn();
 }
 const placeZ=()=>{plate.position.z=v.D-v.front;items.forEach(it=>it.mesh.position.z=v.D-it.P)};
+function footprint(g,P){
+  const p=g.attributes.position,n=p.count,tris=n/3|0,out=[];
+  if(tris>40000){const pts=[];for(let i=0;i<n;i++)if(p.getZ(i)<=P+.01)pts.push([p.getX(i),p.getY(i)]);
+    pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),h=[];
+    for(const q of [pts,[...pts].reverse()]){const l=[];for(const x of q){while(l.length>1&&cr(l[l.length-2],l[l.length-1],x)<=0)l.pop();l.push(x)}l.pop();h.push(...l)}
+    return h.length>2?[mP(h)]:[]}
+  for(let t=0;t<tris;t++){const i=t*3;if(Math.min(p.getZ(i),p.getZ(i+1),p.getZ(i+2))>P+.01)continue;
+    const q=[0,1,2].map(k=>({X:Math.round(p.getX(i+k)*S),Y:Math.round(p.getY(i+k)*S)}));
+    if(!CL.Clipper.Area(q))continue;if(!CL.Clipper.Orientation(q))q.reverse();out.push(q)}
+  return paths(tree(out));
+}
+function buildModel(it){
+  const g=it.src.clone();g.rotateX(it.ox*Math.PI/2);g.rotateY(it.oy*Math.PI/2);g.computeBoundingBox();
+  const b=g.boundingBox,w=Math.max(b.max.x-b.min.x,b.max.y-b.min.y,1e-6);
+  g.translate(-(b.min.x+b.max.x)/2,-(b.min.y+b.max.y)/2,-b.min.z);const sc=it.size/w;g.scale(sc,sc,sc);
+  it.h=(b.max.z-b.min.z)*sc;it.P=Math.min(it.P,maxP(),it.h*.8);it.paths=footprint(g,it.P);it.mg=g;
+  it.mesh.geometry.dispose();it.mesh.geometry=g.clone();it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=v.D-it.P;
+}
+function addModel(g,name){
+  g=g.index?g.toNonIndexed():g;g.computeBoundingBox();const b=g.boundingBox,nat=Math.max(b.max.x-b.min.x,b.max.y-b.min.y);
+  const it={id:++uid,kind:'Model',label:name.replace(/\.stl$/i,'').slice(0,24),src:g,ox:0,oy:0,size:Math.round(Math.min(150,Math.max(10,nat>150?60:nat))),rot:0,T:0,P:1.5,clr:.2,color:'#ffffff',mesh:new THREE.Mesh(new THREE.BufferGeometry(),mat('#ffffff'))};
+  scene.add(it.mesh);items.push(it);buildModel(it);select(it);
+  const m=document.getElementById('msg');if(m)m.textContent=`Načteno: ${g.attributes.position.count/3|0} trojúhelníků. Pokud je model otočený špatně, použij tlačítka Otočit.`;
+}
 function buildItem(it){
+  if(it.src)return buildModel(it);
   it.P=Math.min(it.P,maxP());
   it.paths=it.kind=='Jméno'?textPaths(fcache[v.nf],v.nm,it.size,false):decoPaths(it.kind,it.size);
   it.mesh.geometry.dispose();it.mesh.geometry=geo(it.paths,it.T+it.P)||new THREE.BufferGeometry();
@@ -242,10 +276,11 @@ function panel(){
   <button id="addn" style="width:100%">${items.some(i=>i.kind=='Jméno')?'Jméno je v návrhu':'Přidat jméno'}</button>
   <h2>Dekorace</h2>
   <div class="row">${Object.keys(DEC).map(k=>`<button data-d="${k}">${k}</button>`).join('')}</div>
-  <div id="list">${items.map(i=>`<button data-s="${i.id}" class="${i===sel?'on':''}">${i.kind}</button>`).join('')}</div>
+  <button id="upl" style="width:100%;margin-top:8px">Nahrát vlastní STL…</button><input type="file" id="stlf" accept=".stl" hidden>
+  <div id="list">${items.map(i=>`<button data-s="${i.id}" class="${i===sel?'on':''}">${i.label||i.kind}</button>`).join('')}</div>
   ${it?`<h2>Vybráno: ${it.kind}</h2>
   <label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>
-  ${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění (mm)',0.5,maxP(),it.P,.1)}${R('iv','Vůle (mm)',0,.5,it.clr,.05)}
+  ${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="row"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění (mm)',0.5,maxP(),it.P,.1)}${R('iv','Vůle (mm)',0,.5,it.clr,.05)}
   <button id="del" style="width:100%">Smazat díl</button>`:''}
   ${v.shell?`<h2>Vzor čela</h2>
   <label><span>Vzor</span><select id="pt">${[['','Žádný'],['h','Vodorovné pruhy'],['v','Svislé pruhy'],['d','Šikmé pruhy'],['k','Šachovnice'],['o','Puntíky'],['s','Hvězdičky'],['r','Srdíčka']].map(([k,n])=>`<option value="${k}" ${k==v.pt?'selected':''}>${n}</option>`).join('')}</select></label>
@@ -259,7 +294,7 @@ let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
  ch:e=>{v.ch=e.value.toUpperCase();later(buildLetter)},lf:e=>{v.lf=e.value;buildLetter()},
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
- wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,mnt:e=>{v.mnt=+e.value;buildLetter()},
+ wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,stlf:async e=>{const f=e.files[0];if(!f)return;let g;try{g=new STLLoader().parse(await f.arrayBuffer())}catch(err){document.getElementById('msg').textContent='STL se nepodařilo načíst: '+err.message;return}e.value='';addModel(g,f.name)},mnt:e=>{v.mnt=+e.value;buildLetter()},
  lc:e=>letter.material.color.set(v.lc=e.value),
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -269,6 +304,7 @@ const H={
  ip:e=>{sel.P=+e.value;later(()=>buildItem(sel))},iv:e=>sel.clr=+e.value};
 pn.addEventListener('input',e=>{const o=e.target.nextElementSibling;if(o&&o.tagName=='OUTPUT')o.textContent=e.target.value;H[e.target.id]?.(e.target)});
 pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ro){if(b.dataset.ro=='x')sel.ox=(sel.ox+1)%4;else if(b.dataset.ro=='y')sel.oy=(sel.oy+1)%4;else sel.ox=(sel.ox+2)%4;buildItem(sel);return}
   if(b.dataset.pk){openPicker(b.dataset.pk);return}
   if(b.dataset.p){pickFont(b.dataset.p,b.dataset.n);return}
   if(b.dataset.m!==undefined){v.shell=+b.dataset.m;items.forEach(buildItem);buildLetter();panel()}
@@ -276,6 +312,7 @@ pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   else if(b.dataset.s)select(items.find(i=>i.id==b.dataset.s));
   else if(b.id=='addn'&&!items.some(i=>i.kind=='Jméno'))addItem('Jméno');
   else if(b.id=='del'){scene.remove(sel.mesh);items.splice(items.indexOf(sel),1);select(items[0]||null)}
+  else if(b.id=='upl')document.getElementById('stlf').click();
   else if(b.id=='go')exportZip(b)});
 
 /* ---------- export ---------- */
@@ -301,9 +338,9 @@ async function exportZip(btn){
       add('drzak_zed.stl',m.wall,'destička na zeď: 2 otvory Ø4,5 mm, tiskni hlavičkou nahoru; pro těžší písmena raději použij šroub s hlavou do 9 mm');
       add('drzak_stojan.stl',m.stand,`stojan: deska ${m.Wb.toFixed(0)} mm široká, opěrka ${m.Hr.toFixed(0)} mm vysoká; tiskni jak je (deska naplocho), 4+ stěny, PETG/ASA`)}
     const cnt={};
-    items.forEach(it=>{const k=it.kind=='Jméno'?'jmeno':it.kind;cnt[k]=(cnt[k]||0)+1;
-      add(`${k}${it.kind=='Jméno'?'':'_'+cnt[k]}_${hex(it.color)}.stl`,(h=>{const q=geo(it.paths,h);return v.ori?q.rotateY(Math.PI).translate(0,0,h):q})(it.T+it.P),
-        `${it.kind}, velikost ${it.size} mm, výška dílu ${(it.T+it.P).toFixed(1)} mm, spodních ${it.P} mm zapadá do kapsy`)});
+    items.forEach(it=>{const k=it.kind=='Jméno'?'jmeno':it.src?'model_'+it.label.replace(/[^\w-]+/g,''):it.kind;cnt[k]=(cnt[k]||0)+1;
+      add(`${k}${it.kind=='Jméno'?'':'_'+cnt[k]}_${hex(it.color)}.stl`,((h,q)=>v.ori?q.rotateY(Math.PI).translate(0,0,h):q)(it.src?it.h:it.T+it.P,it.src?it.mg.clone():geo(it.paths,it.T+it.P)),
+        `${it.label||it.kind}, velikost ${it.size} mm, výška dílu ${(it.src?it.h:it.T+it.P).toFixed(1)} mm, spodních ${it.P} mm zapadá do kapsy`)});
     z.file('seznam_dilu.txt',L.join('\n'));
     const a=document.createElement('a');a.href=URL.createObjectURL(await z.generateAsync({type:'blob'}));
     a.download=`navrh_${v.ch}.zip`;a.click();msg.textContent=`Hotovo: ${L.length} souborů.`;
