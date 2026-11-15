@@ -3,34 +3,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Editor písmen</title>
 <style>
-:root{--bg:#e9eef2;--pn:#fff;--tx:#25303a;--ac:#4f82b3;--ln:#d5dde4;--r:10px}
-@media(prefers-color-scheme:dark){:root{--bg:#161b20;--pn:#1f262d;--tx:#e6ecf1;--ln:#34404a;--ac:#8fb8e0}}
+:root{--bg:#eef1f5;--pn:#fff;--tx:#1f2933;--mut:#6b7785;--ac:#3d6fa8;--ac2:#e7eff9;--ln:#dfe5ec;--r:12px;--in:#f5f7fa;--sh:0 1px 2px rgba(20,30,50,.06),0 6px 18px rgba(20,30,50,.05);--warn:#a4540a}
+@media(prefers-color-scheme:dark){:root{--bg:#12161b;--pn:#1b2129;--tx:#e8edf2;--mut:#93a0ae;--ac:#7fb0e6;--ac2:#243447;--ln:#2b3541;--in:#222a33;--sh:none;--warn:#f0b070}}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
-body{font:15px/1.35 "Trebuchet MS",system-ui,sans-serif;background:var(--bg);color:var(--tx);display:grid;grid-template-columns:1fr 340px;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-#cv{position:relative;min-height:0;touch-action:none}#cv canvas{display:block;width:100%;height:100%}
-#hint{position:absolute;left:12px;bottom:10px;font-size:13px;opacity:.65;pointer-events:none}
-aside{background:var(--pn);border-left:1px solid var(--ln);overflow:auto;padding:14px 16px 24px}
-h2{font-size:16px;margin:18px 0 8px;font-weight:700}h2:first-child{margin-top:0}
-label{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:8px;margin:7px 0;min-height:36px}
-label>span{font-size:14px}output{font-size:13px;text-align:right;opacity:.7}
-input[type=range]{width:100%;height:32px}
-.pkrow{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin:7px 0}.pkrow>span{font-size:14px}
-.fp{text-align:left;font-size:19px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:360px;overflow:auto;margin:6px 0;padding:2px;border:1px solid var(--ln);border-radius:var(--r)}.fg[hidden]{display:none}
-.warn{font-size:13px;color:#a4540a;margin:4px 0;min-height:0}@media(prefers-color-scheme:dark){.warn{color:#f0b070}}
-.gh{grid-column:1/-1;font-size:12px;opacity:.65;padding:6px 4px 0}
-.tile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:68px;padding:6px 8px;text-align:left;overflow:hidden}
-.tile span{font-size:26px;line-height:1.15;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.tile b{font-size:11px;font-weight:400;opacity:.65}input[type=checkbox]{width:28px;height:28px;justify-self:start}
-input[type=text],select{grid-column:2/4;min-height:40px;font:inherit;padding:0 10px;border:1px solid var(--ln);border-radius:var(--r);background:var(--bg);color:inherit;width:100%}
-input[type=color]{width:100%;height:40px;border:1px solid var(--ln);border-radius:var(--r);background:none;padding:2px;grid-column:2/4}
-button{font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--ln);border-radius:var(--r);background:var(--bg);color:inherit;cursor:pointer}
-button.on,.tile.on{background:var(--ac);color:#fff;border-color:var(--ac)}
-.row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.two{grid-template-columns:1fr 1fr}
-#list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}#list button{min-height:36px;padding:0 10px}
-#go{width:100%;margin-top:20px;background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
-#msg{font-size:13px;margin-top:8px;min-height:18px;opacity:.8}
-@media(max-aspect-ratio:1/1){body{grid-template-columns:1fr;grid-template-rows:48vh 1fr}aside{border-left:0;border-top:1px solid var(--ln)}}
+body{font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);-webkit-font-smoothing:antialiased}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px;padding:0 20px;background:var(--pn);border-bottom:1px solid var(--ln);flex:none}
+.brand{display:flex;align-items:center;gap:12px}.brand b{display:block;font-size:16px;letter-spacing:.1px}.brand small{display:block;color:var(--mut);font-size:12px}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#8fc1ee,#3d6fa8);color:#fff;display:grid;place-items:center;font-weight:800;font-size:18px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:320px minmax(0,1fr) 340px}
+aside{overflow:auto;padding:16px;background:var(--bg);display:flex;flex-direction:column;gap:14px}
+#pl{border-right:1px solid var(--ln)}#pr{border-left:1px solid var(--ln)}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:14px 14px 12px;box-shadow:var(--sh)}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:8px}
+.card h3 i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--ac2);color:var(--ac);display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:0}
+#cv{position:relative;min-height:0;touch-action:none;background:radial-gradient(ellipse at 50% 35%,var(--pn),var(--bg) 75%)}
+#cv canvas{display:block;width:100%;height:100%}
+#views{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:2px;padding:3px;background:var(--pn);border:1px solid var(--ln);border-radius:999px;box-shadow:var(--sh)}
+#views button{min-height:32px;padding:0 14px;border:0;border-radius:999px;background:none;font-size:13px}#views button:hover{background:var(--ac2)}
+#hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:12.5px;color:var(--mut);pointer-events:none}
+label{display:grid;grid-template-columns:96px 1fr 46px;align-items:center;gap:8px;margin:6px 0;min-height:36px}
+label>span{font-size:13px;color:var(--mut)}output{font-size:12px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;height:30px;accent-color:var(--ac)}
+input[type=text],select{grid-column:2/4;min-height:38px;font:inherit;padding:0 10px;border:1px solid var(--ln);border-radius:10px;background:var(--in);color:inherit;width:100%}
+input[type=color]{grid-column:2/4;width:100%;height:38px;border:1px solid var(--ln);border-radius:10px;background:var(--in);padding:3px}
+button{font:inherit;min-height:40px;padding:0 12px;border:1px solid var(--ln);border-radius:10px;background:var(--in);color:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover{border-color:var(--ac)}button.on,.tile.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.wide{width:100%;margin-top:6px}button.danger{color:#b4372f}
+button.primary{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600;padding:0 18px;min-height:40px}button.primary:disabled{opacity:.6}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;background:var(--in);border:1px solid var(--ln);border-radius:12px;margin-bottom:8px}
+.seg button{border:0;background:none;min-height:36px}.seg button.on{background:var(--ac);color:#fff}
+.note{margin:6px 0 2px;font-size:12.5px;color:var(--mut)}
+.warn{font-size:12.5px;color:var(--warn);margin:4px 0 0}.warn:empty{display:none}
+.pkrow{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin:6px 0}.pkrow>span{font-size:13px;color:var(--mut)}
+.fp{text-align:left;font-size:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:340px;overflow:auto;margin:6px 0;padding:6px;border:1px solid var(--ln);border-radius:var(--r);background:var(--in)}.fg[hidden]{display:none}
+.gh{grid-column:1/-1;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);padding:6px 2px 0}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:68px;padding:6px 8px;text-align:left;overflow:hidden;background:var(--pn)}
+.tile span{font-size:26px;line-height:1.15;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.tile b{font-size:11px;font-weight:400;opacity:.7}
+#list{display:flex;flex-wrap:wrap;gap:6px}#list button{min-height:34px;padding:0 12px;border-radius:999px}
+.lib{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.lt{position:relative}.lt>button:first-child{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;min-height:92px;background:var(--pn)}
+.lt img{width:60px;height:60px;object-fit:contain}.lt b{font-size:11px;font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lt .x{position:absolute;top:3px;right:3px;width:22px;height:22px;min-height:0;padding:0;border-radius:50%;line-height:1;font-size:14px;background:var(--in);color:var(--mut)}
+#msg{font-size:12.5px;color:var(--mut);margin-top:8px;min-height:18px}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@media(max-width:1060px){body{height:auto;min-height:100%}main{display:flex;flex-direction:column}
+#cv{position:sticky;top:0;z-index:5;height:50vh;order:-1;border-bottom:1px solid var(--ln)}#pl,#pr{overflow:visible;border:0}header small{display:none}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 <script type="importmap">{"imports":{
@@ -41,8 +59,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 "opentype.js":"https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.module.js",
 "jszip":"https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm"}}</script>
 </head><body>
-<div id="cv"><div id="hint">Tažením prstu pohybuješ vybraným dílem, jinak otáčíš pohledem.</div></div>
-<aside id="pn"></aside>
+<header><div class="brand"><span class="logo">A</span><div><b>Editor písmen</b><small>Dekorace jména · příprava STL k tisku</small></div></div>
+<button id="go" class="primary">Stáhnout STL (ZIP)</button></header>
+<main><aside id="pl"></aside>
+<div id="cv"><div id="views"><button data-view="front">Zepředu</button><button data-view="back">Zezadu</button><button data-view="side">Z boku</button><button data-view="top">Shora</button></div>
+<div id="hint">Tažením pohybuješ vybraným dílem, jinak otáčíš pohledem. Kolečko nebo dva prsty přibližují.</div></div>
+<aside id="pr"></aside></main>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -55,7 +77,7 @@ import JSZip from 'jszip';
 const opentype=OT.default||OT, CL=ClipperLib, S=1000, V2=THREE.Vector2;
 
 /* ---------- fonty ---------- */
-const FL=[["Pacifico","Pacifico.ttf","p",0,0,""],["Lobster","Lobster.ttf","p",0,0,""],["Dancing Script","DancingScript.ttf","p",1,0,""],["Caveat","Caveat.ttf","p",0,0,""],["Sacramento","Sacramento.ttf","p",0,1,"nedrží: P"],["Parisienne","Parisienne.ttf","p",2,2,"nedrží: F K T"],["Kaushan Script","KaushanScript.ttf","p",0,1,"nedrží: K"],["Courgette","Courgette.ttf","p",0,0,""],["Allura","Allura.ttf","p",2,1,"nedrží: F T"],["Alex Brush","AlexBrush.ttf","p",2,0,""],["Yellowtail","Yellowtail.ttf","p",0,0,""],["Marck Script","MarckScript.ttf","p",0,0,""],["Playball","Playball.ttf","p",0,1,"nedrží: A"],["Merienda","Merienda.ttf","p",0,0,""],["Norican","Norican.ttf","p",0,0,""],["Damion","Damion.ttf","p",0,1,"nedrží: T"],["Grand Hotel","GrandHotel.ttf","p",0,0,""],["Bad Script","BadScript.ttf","p",0,0,""],["Comforter","Comforter.ttf","p",1,1,"nedrží: J K"],["Style Script","StyleScript.ttf","p",1,2,"nedrží: D K R"],["Amatic SC","AmaticSC.ttf","p",2,0,""],["Indie Flower","IndieFlower.ttf","p",0,0,""],["Kalam","Kalam.ttf","p",0,0,""],["Patrick Hand","PatrickHand.ttf","p",0,0,""],["Fuzzy Bubbles","FuzzyBubbles.ttf","p",0,0,""],["Caveat Brush","CaveatBrush.ttf","p",0,0,""],["Yesteryear","Yesteryear.ttf","p",0,0,""],["Berkshire Swash","BerkshireSwash.ttf","p",0,0,""],["Pinyon Script","PinyonScript.ttf","p",2,2,"nedrží: F K N T W"],["Italianno","Italianno.ttf","p",2,1,"nedrží: K"],["Arizonia","Arizonia.ttf","p",1,2,"nedrží: A D E H I K…"],["Lovers Quarrel","LoversQuarrel.ttf","p",2,1,"nedrží: M Q"],["Petit Formal Script","PetitFormalScript.ttf","p",2,1,"nedrží: K"],["Qwigley","Qwigley.ttf","p",2,2,"nedrží: B D K M T"],["Mea Culpa","MeaCulpa.ttf","p",2,2,"tenké tahy"],["Ruthie","Ruthie.ttf","p",2,2,"nedrží: A G H M V W"],["Playwrite CZ","PlaywriteCZ.ttf","p",0,2,"nedrží: B P R"],["Birthstone","Birthstone.ttf","p",1,0,""],["Send Flowers","SendFlowers.ttf","p",0,0,""],["Licorice","Licorice.ttf","p",2,2,"nedrží: B D F M P R…"],["Gwendolyn","Gwendolyn.ttf","p",2,2,"tenké tahy"],["Grechen Fuemen","GrechenFuemen.ttf","p",1,2,"nedrží: B D K P Q R"],["Splash","Splash.ttf","p",2,2,"nedrží: A B C D E F…"],["Water Brush","WaterBrush.ttf","p",1,2,"nedrží: G H I K M S…"],["Updock","Updock.ttf","p",2,1,"nedrží: Y"],["WindSong","WindSong.ttf","p",2,2,"nedrží: B D H P"],["Oooh Baby","OoohBaby.ttf","p",0,1,"nedrží: K"],["Square Peg","SquarePeg.ttf","p",1,2,"nedrží: B D J K P R"],["Waterfall","Waterfall.ttf","p",2,1,"nedrží: J T"],["Whisper","Whisper.ttf","p",2,1,"nedrží: Y"],["Hurricane","Hurricane.ttf","p",2,2,"nedrží: D M P R T"],["Fleur De Leah","FleurDeLeah.ttf","p",2,2,"nedrží: I M U"],["Babylonica","Babylonica.ttf","p",2,2,"nedrží: H J K L M Q…"],["Corinthia","Corinthia.ttf","p",2,0,""],["Estonia","Estonia.ttf","p",2,0,""],["Island Moments","IslandMoments.ttf","p",2,2,"nedrží: B H K R Y"],["Kolker Brush","KolkerBrush.ttf","p",2,2,"nedrží: A B C E F G…"],["Love Light","LoveLight.ttf","p",2,2,"nedrží: A G H M V W"],["Moon Dance","MoonDance.ttf","p",2,1,"nedrží: Q"],["My Soul","MySoul.ttf","p",1,2,"nedrží: A B C D E F…"],["Passions Conflict","PassionsConflict.ttf","p",2,2,"tenké tahy"],["Puppies Play","PuppiesPlay.ttf","p",2,1,"tenké tahy"],["Redressed","Redressed.ttf","p",0,1,"nedrží: P R"],["Sassy Frass","SassyFrass.ttf","p",2,1,"nedrží: F"],["Bonheur Royale","BonheurRoyale.ttf","p",2,2,"nedrží: M N U V W"],["Imperial Script","ImperialScript.ttf","p",2,1,"nedrží: K M"],["Inspiration","Inspiration.ttf","p",2,1,"nedrží: T"],["Lavishly Yours","LavishlyYours.ttf","p",2,2,"nedrží: M S Y"],["Luxurious Script","LuxuriousScript.ttf","p",2,1,"nedrží: K M"],["Montez","Montez.ttf","p",1,1,"nedrží: D F"],["Titan One","TitanOne.ttf","t",0,0,""],["Baloo 2","Baloo2.ttf","t",0,0,""],["Luckiest Guy","LuckiestGuy.ttf","t",0,0,""],["Ranchers","Ranchers.ttf","t",0,0,""],["Shrikhand","Shrikhand.ttf","t",0,0,""],["Pangolin","Pangolin.ttf","t",0,0,""],["Alfa Slab One","AlfaSlabOne.ttf","t",0,0,""],["Bevan","Bevan.ttf","t",0,0,""],["Ultra","Ultra.ttf","t",0,0,""],["Rammetto One","RammettoOne.ttf","t",0,0,""],["Racing Sans One","RacingSansOne.ttf","t",0,0,""],["Righteous","Righteous.ttf","t",0,0,""],["Pattaya","Pattaya.ttf","t",0,0,""],["Modak","Modak.ttf","t",0,0,""],["Coiny","Coiny.ttf","t",0,0,""],["Rubik Mono One","RubikMonoOne.ttf","t",0,0,""],["Quicksand","Quicksand.ttf","t",0,0,""],["Playfair Display","PlayfairDisplay.ttf","t",1,0,""],["Abril Fatface","AbrilFatface.ttf","t",1,0,""],["Cinzel","Cinzel.ttf","t",1,1,"nedrží: K"],["Bungee","Bungee.ttf","t",0,0,""],["Dela Gothic One","DelaGothicOne.ttf","t",0,0,""],["Archivo Black","ArchivoBlack.ttf","t",0,0,""],["Anton","Anton.ttf","t",0,0,""],["Bebas Neue","BebasNeue.ttf","t",0,0,""],["Spicy Rice","SpicyRice.ttf","t",0,0,""],["Sigmar One","SigmarOne.ttf","t",0,0,""],["Sansita","Sansita.ttf","t",0,1,"nedrží: K"],["Poetsen One","PoetsenOne.ttf","t",0,0,""],["Grandstander","Grandstander.ttf","t",0,0,""],["Itim","Itim.ttf","t",0,0,""],["Sriracha","Sriracha.ttf","t",0,0,""],["Pridi","Pridi.ttf","t",0,0,""],["Special Elite","SpecialElite.ttf","t",0,1,"nedrží: P"],["Fascinate","Fascinate.ttf","t",0,0,""],["Gloock","Gloock.ttf","t",1,0,""],["Rozha One","RozhaOne.ttf","t",1,0,""],["Yeseva One","YesevaOne.ttf","t",1,0,""],["Chonburi","Chonburi.ttf","t",0,1,"nedrží: Q"],["Yatra One","YatraOne.ttf","t",0,0,""],["Staatliches","Staatliches.ttf","t",0,0,""],["Original Surfer","OriginalSurfer.ttf","t",0,0,""],["Peralta","Peralta.ttf","t",0,0,""],["Margarine","Margarine.ttf","t",0,1,"nedrží: I"],["Mouse Memoirs","MouseMemoirs.ttf","t",0,0,""],["Barriecito","Barriecito.ttf","t",0,0,""],["Baloo Bhai 2","BalooBhai2.ttf","t",0,0,""],["Hammersmith One","HammersmithOne.ttf","t",0,0,""],["Galindo","Galindo.ttf","t",0,0,""],["Oregano","Oregano.ttf","t",0,1,"nedrží: P"],["Ranga","Ranga.ttf","t",0,0,""],["Dekko","Dekko.ttf","t",0,0,""],["Annie Use Your Telescope","AnnieUseYourTelescope.ttf","t",0,1,"nedrží: K"],["Just Another Hand","JustAnotherHand.ttf","t",0,0,""],["Yomogi","Yomogi.ttf","t",0,0,""],["Sedgwick Ave","SedgwickAve.ttf","t",0,0,""],["Sedgwick Ave Display","SedgwickAveDisplay.ttf","t",0,1,"nedrží: I"],["Fondamento","Fondamento.ttf","t",0,1,"nedrží: K"],["Quintessential","Quintessential.ttf","t",1,2,"nedrží: H K L N R T…"],["Stalemate","Stalemate.ttf","t",2,2,"tenké tahy"],["Miama","Miama.ttf","t",1,2,"tenké tahy"],["Ruge Boogie","RugeBoogie.ttf","t",2,2,"nedrží: A K R"],["Engagement","Engagement.ttf","t",0,2,"nedrží: B D F P T"],["Clicker Script","ClickerScript.ttf","t",2,2,"tenké tahy"],["Kavivanar","Kavivanar.ttf","t",0,0,""],["Lemonada","Lemonada.ttf","t",0,0,""],["Mogra","Mogra.ttf","t",0,0,""],["Playpen Sans","PlaypenSans.ttf","t",0,0,""],["Charm","Charm.ttf","t",0,0,""],["Charmonman","Charmonman.ttf","t",0,1,"nedrží: T"]];
+const FL=[["Pacifico","Pacifico.ttf","p",0,0,""],["Lobster","Lobster.ttf","p",0,0,""],["Dancing Script","DancingScript.ttf","p",1,0,""],["Caveat","Caveat.ttf","p",0,0,""],["Sacramento","Sacramento.ttf","p",0,1,"nedrží: P"],["Parisienne","Parisienne.ttf","p",2,2,"nedrží: F K T"],["Kaushan Script","KaushanScript.ttf","p",0,1,"nedrží: K"],["Courgette","Courgette.ttf","p",0,0,""],["Allura","Allura.ttf","p",2,1,"nedrží: F T"],["Alex Brush","AlexBrush.ttf","p",2,0,""],["Yellowtail","Yellowtail.ttf","p",0,0,""],["Marck Script","MarckScript.ttf","p",0,0,""],["Playball","Playball.ttf","p",0,1,"nedrží: A"],["Merienda","Merienda.ttf","p",0,0,""],["Norican","Norican.ttf","p",0,0,""],["Damion","Damion.ttf","p",0,1,"nedrží: T"],["Grand Hotel","GrandHotel.ttf","p",0,0,""],["Bad Script","BadScript.ttf","p",0,0,""],["Comforter","Comforter.ttf","p",1,1,"nedrží: J K"],["Style Script","StyleScript.ttf","p",1,2,"nedrží: D K R"],["Amatic SC","AmaticSC.ttf","p",2,0,""],["Indie Flower","IndieFlower.ttf","p",0,0,""],["Kalam","Kalam.ttf","p",0,0,""],["Patrick Hand","PatrickHand.ttf","p",0,0,""],["Fuzzy Bubbles","FuzzyBubbles.ttf","p",0,0,""],["Caveat Brush","CaveatBrush.ttf","p",0,0,""],["Yesteryear","Yesteryear.ttf","p",0,0,""],["Berkshire Swash","BerkshireSwash.ttf","p",0,0,""],["Pinyon Script","PinyonScript.ttf","p",2,2,"nedrží: F K N T W"],["Italianno","Italianno.ttf","p",2,1,"nedrží: K"],["Arizonia","Arizonia.ttf","p",1,2,"nedrží: A D E H I K…"],["Lovers Quarrel","LoversQuarrel.ttf","p",2,1,"nedrží: M Q"],["Petit Formal Script","PetitFormalScript.ttf","p",2,1,"nedrží: K"],["Qwigley","Qwigley.ttf","p",2,2,"nedrží: B D K M T"],["Mea Culpa","MeaCulpa.ttf","p",2,2,"tenké tahy"],["Ruthie","Ruthie.ttf","p",2,2,"nedrží: A G H M V W"],["Playwrite CZ","PlaywriteCZ.ttf","p",0,2,"nedrží: B P R"],["Birthstone","Birthstone.ttf","p",1,0,""],["Send Flowers","SendFlowers.ttf","p",0,0,""],["Licorice","Licorice.ttf","p",2,2,"nedrží: B D F M P R…"],["Gwendolyn","Gwendolyn.ttf","p",2,2,"tenké tahy"],["Grechen Fuemen","GrechenFuemen.ttf","p",1,2,"nedrží: B D K P Q R"],["Splash","Splash.ttf","p",2,2,"nedrží: A B C D E F…"],["Water Brush","WaterBrush.ttf","p",1,2,"nedrží: G H I K M S…"],["Updock","Updock.ttf","p",2,1,"nedrží: Y"],["WindSong","WindSong.ttf","p",2,2,"nedrží: B D H P"],["Oooh Baby","OoohBaby.ttf","p",0,1,"nedrží: K"],["Square Peg","SquarePeg.ttf","p",1,2,"nedrží: B D J K P R"],["Waterfall","Waterfall.ttf","p",2,1,"nedrží: J T"],["Whisper","Whisper.ttf","p",2,1,"nedrží: Y"],["Hurricane","Hurricane.ttf","p",2,2,"nedrží: D M P R T"],["Fleur De Leah","FleurDeLeah.ttf","p",2,2,"nedrží: I M U"],["Babylonica","Babylonica.ttf","p",2,2,"nedrží: H J K L M Q…"],["Corinthia","Corinthia.ttf","p",2,0,""],["Estonia","Estonia.ttf","p",2,0,""],["Island Moments","IslandMoments.ttf","p",2,2,"nedrží: B H K R Y"],["Kolker Brush","KolkerBrush.ttf","p",2,2,"nedrží: A B C E F G…"],["Love Light","LoveLight.ttf","p",2,2,"nedrží: A G H M V W"],["Moon Dance","MoonDance.ttf","p",2,1,"nedrží: Q"],["My Soul","MySoul.ttf","p",1,2,"nedrží: A B C D E F…"],["Passions Conflict","PassionsConflict.ttf","p",2,2,"tenké tahy"],["Puppies Play","PuppiesPlay.ttf","p",2,1,"tenké tahy"],["Redressed","Redressed.ttf","p",0,1,"nedrží: P R"],["Sassy Frass","SassyFrass.ttf","p",2,1,"nedrží: F"],["Bonheur Royale","BonheurRoyale.ttf","p",2,2,"nedrží: M N U V W"],["Imperial Script","ImperialScript.ttf","p",2,1,"nedrží: K M"],["Inspiration","Inspiration.ttf","p",2,1,"nedrží: T"],["Lavishly Yours","LavishlyYours.ttf","p",2,2,"nedrží: M S Y"],["Luxurious Script","LuxuriousScript.ttf","p",2,1,"nedrží: K M"],["Montez","Montez.ttf","p",1,1,"nedrží: D F"],["Matcha Cih","MatchaCih.ttf","t",0,0,"","ěčřůňťď"],["Titan One","TitanOne.ttf","t",0,0,""],["Baloo 2","Baloo2.ttf","t",0,0,""],["Luckiest Guy","LuckiestGuy.ttf","t",0,0,""],["Ranchers","Ranchers.ttf","t",0,0,""],["Shrikhand","Shrikhand.ttf","t",0,0,""],["Pangolin","Pangolin.ttf","t",0,0,""],["Alfa Slab One","AlfaSlabOne.ttf","t",0,0,""],["Bevan","Bevan.ttf","t",0,0,""],["Ultra","Ultra.ttf","t",0,0,""],["Rammetto One","RammettoOne.ttf","t",0,0,""],["Racing Sans One","RacingSansOne.ttf","t",0,0,""],["Righteous","Righteous.ttf","t",0,0,""],["Pattaya","Pattaya.ttf","t",0,0,""],["Modak","Modak.ttf","t",0,0,""],["Coiny","Coiny.ttf","t",0,0,""],["Rubik Mono One","RubikMonoOne.ttf","t",0,0,""],["Quicksand","Quicksand.ttf","t",0,0,""],["Playfair Display","PlayfairDisplay.ttf","t",1,0,""],["Abril Fatface","AbrilFatface.ttf","t",1,0,""],["Cinzel","Cinzel.ttf","t",1,1,"nedrží: K"],["Bungee","Bungee.ttf","t",0,0,""],["Dela Gothic One","DelaGothicOne.ttf","t",0,0,""],["Archivo Black","ArchivoBlack.ttf","t",0,0,""],["Anton","Anton.ttf","t",0,0,""],["Bebas Neue","BebasNeue.ttf","t",0,0,""],["Spicy Rice","SpicyRice.ttf","t",0,0,""],["Sigmar One","SigmarOne.ttf","t",0,0,""],["Sansita","Sansita.ttf","t",0,1,"nedrží: K"],["Poetsen One","PoetsenOne.ttf","t",0,0,""],["Grandstander","Grandstander.ttf","t",0,0,""],["Itim","Itim.ttf","t",0,0,""],["Sriracha","Sriracha.ttf","t",0,0,""],["Pridi","Pridi.ttf","t",0,0,""],["Special Elite","SpecialElite.ttf","t",0,1,"nedrží: P"],["Fascinate","Fascinate.ttf","t",0,0,""],["Gloock","Gloock.ttf","t",1,0,""],["Rozha One","RozhaOne.ttf","t",1,0,""],["Yeseva One","YesevaOne.ttf","t",1,0,""],["Chonburi","Chonburi.ttf","t",0,1,"nedrží: Q"],["Yatra One","YatraOne.ttf","t",0,0,""],["Staatliches","Staatliches.ttf","t",0,0,""],["Original Surfer","OriginalSurfer.ttf","t",0,0,""],["Peralta","Peralta.ttf","t",0,0,""],["Margarine","Margarine.ttf","t",0,1,"nedrží: I"],["Mouse Memoirs","MouseMemoirs.ttf","t",0,0,""],["Barriecito","Barriecito.ttf","t",0,0,""],["Baloo Bhai 2","BalooBhai2.ttf","t",0,0,""],["Hammersmith One","HammersmithOne.ttf","t",0,0,""],["Galindo","Galindo.ttf","t",0,0,""],["Oregano","Oregano.ttf","t",0,1,"nedrží: P"],["Ranga","Ranga.ttf","t",0,0,""],["Dekko","Dekko.ttf","t",0,0,""],["Annie Use Your Telescope","AnnieUseYourTelescope.ttf","t",0,1,"nedrží: K"],["Just Another Hand","JustAnotherHand.ttf","t",0,0,""],["Yomogi","Yomogi.ttf","t",0,0,""],["Sedgwick Ave","SedgwickAve.ttf","t",0,0,""],["Sedgwick Ave Display","SedgwickAveDisplay.ttf","t",0,1,"nedrží: I"],["Fondamento","Fondamento.ttf","t",0,1,"nedrží: K"],["Quintessential","Quintessential.ttf","t",1,2,"nedrží: H K L N R T…"],["Stalemate","Stalemate.ttf","t",2,2,"tenké tahy"],["Miama","Miama.ttf","t",1,2,"tenké tahy"],["Ruge Boogie","RugeBoogie.ttf","t",2,2,"nedrží: A K R"],["Engagement","Engagement.ttf","t",0,2,"nedrží: B D F P T"],["Clicker Script","ClickerScript.ttf","t",2,2,"tenké tahy"],["Kavivanar","Kavivanar.ttf","t",0,0,""],["Lemonada","Lemonada.ttf","t",0,0,""],["Mogra","Mogra.ttf","t",0,0,""],["Playpen Sans","PlaypenSans.ttf","t",0,0,""],["Charm","Charm.ttf","t",0,0,""],["Charmonman","Charmonman.ttf","t",0,1,"nedrží: T"]];
 const F=Object.fromEntries(FL.map(([n,f,g])=>[n,{f:'fonts/'+f,g}]));
 const fcache={},getFont=async n=>fcache[n]??=opentype.parse(await (await fetch(F[n].f)).arrayBuffer());
 const faces={},loadFace=n=>faces[n]??=new FontFace(n,`url(${F[n].f})`).load().then(ff=>document.fonts.add(ff)).catch(()=>{});
@@ -74,6 +96,7 @@ function shapesOf(T){const out=[];const walk=n=>n.Childs().forEach(c=>{if(c.IsHo
 const geo=(P,d)=>{const sh=shapesOf(tree(P));return sh.length?new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:false,curveSegments:1}):null};
 
 function textPaths(font,text,h,fit){
+  text=[...text].filter(ch=>ch==' '||font.charToGlyphIndex(ch)).join('');
   const P=[];let c,x=0,y=0;const add=(a,b)=>c.push([a,-b]);
   let cm;try{cm=font.getPath(text,0,0,100).commands}catch(e){cm=font.getPath(text,0,0,100,{features:[]}).commands}
   for(const k of cm){
@@ -93,20 +116,8 @@ function textPaths(font,text,h,fit){
 const circ=(x,y,r,n=40)=>Array.from({length:n},(_,i)=>[x+r*Math.cos(i/n*6.2832),y+r*Math.sin(i/n*6.2832)]);
 const ell=(x,y,a,b,n=40)=>Array.from({length:n},(_,i)=>[x+a*Math.cos(i/n*6.2832),y+b*Math.sin(i/n*6.2832)]);
 const DEC={
- 'Obláček':()=>[circ(-.22,-.02,.2),circ(.02,.1,.27),circ(.27,-.02,.21),ell(0,-.1,.45,.16)],
  'Hvězda':()=>[Array.from({length:10},(_,i)=>{const r=i%2?.22:.5,a=Math.PI/2+i*Math.PI/5;return[r*Math.cos(a),r*Math.sin(a)]})],
- 'Srdce':()=>[Array.from({length:60},(_,i)=>{const t=i/60*6.2832;return[16*Math.sin(t)**3/34,(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/34+.02]})],
- 'Měsíc':()=>[circ(0,0,.5),circ(.24,.1,.42)],
- 'Balón':()=>[circ(0,.17,.33),[[-.13,-.1],[.13,-.1],[.03,-.24],[-.03,-.24]],[[-.025,-.22],[.025,-.22],[.025,-.34],[-.025,-.34]],[[-.09,-.5],[.09,-.5],[.09,-.34],[-.09,-.34]]],
- 'Květina':()=>[circ(0,0,.17,24),...[0,1,2,3,4].map(i=>{const a=Math.PI/2+i*1.2566;return circ(.26*Math.cos(a),.26*Math.sin(a),.18,24)})],
- 'Slunce':()=>[circ(0,0,.26,36),...Array.from({length:12},(_,i)=>{const a=i*Math.PI/6,f=(q,d)=>[q*Math.cos(a+d),q*Math.sin(a+d)];return [f(.25,-.13),f(.5,0),f(.25,.13)]})],
- 'Králík':()=>[ell(0,-.2,.2,.24),circ(0,.1,.17),ell(-.08,.38,.06,.15),ell(.08,.38,.06,.15),circ(.21,-.34,.07)],
- 'Tlapka':()=>[ell(0,-.15,.23,.19),circ(-.32,.06,.1),circ(-.12,.22,.1),circ(.12,.22,.1),circ(.32,.06,.1)],
- 'Kapka':()=>[circ(0,-.2,.28),[[-.265,-.1],[0,.5],[.265,-.1]]],
- 'Motýl':()=>[ell(-.22,.14,.2,.26),ell(.22,.14,.2,.26),ell(-.16,-.22,.14,.2),ell(.16,-.22,.14,.2),ell(0,0,.05,.36)],
- 'Koruna':()=>[[[-.5,-.3],[.5,-.3],[.5,.1],[.25,-.05],[0,.3],[-.25,-.05],[-.5,.1]],circ(-.5,.12,.06,16),circ(0,.34,.06,16),circ(.5,.12,.06,16)],
- 'Duha':()=>[Array.from({length:21},(_,i)=>{const t=i*Math.PI/20;return[.5*Math.cos(t),.5*Math.sin(t)-.2]}).concat(Array.from({length:21},(_,i)=>{const t=Math.PI-i*Math.PI/20;return[.24*Math.cos(t),.24*Math.sin(t)-.2]})),circ(-.37,-.2,.13,24),circ(.37,-.2,.13,24)],
- 'Medvídek':()=>[circ(0,.14,.2),circ(-.15,.31,.08),circ(.15,.31,.08),ell(0,-.14,.2,.23),ell(-.24,-.1,.07,.14),ell(.24,-.1,.07,.14),circ(-.12,-.36,.1),circ(.12,-.36,.1)]};
+ 'Srdce':()=>[Array.from({length:60},(_,i)=>{const t=i/60*6.2832;return[16*Math.sin(t)**3/34,(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/34+.02]})]};
 function decoPaths(type,size){
   const P=DEC[type]().map(p=>{const q=p.map(([x,y])=>({X:Math.round(x*size*S),Y:Math.round(y*size*S)}));if(!CL.Clipper.Orientation(q))q.reverse();return q});
   return type=='Měsíc'?paths(tree([P[0]],CL.ClipType.ctDifference,[P[1]])):paths(tree(P));
@@ -117,7 +128,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#ffffff',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#a8cfee',pm:0,warn:[],mnt:0,bk:3,key:null};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#a8cfee',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#ffffff',pm:0,warn:[],mnt:0,bk:3,key:null};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -175,9 +186,10 @@ function mountParts(){
   const st=mgAll([bx(Wb,bt,fz+rt+bz,0,-bt/2,(fz-rt-bz)/2),bx(Wb,Hr,rt,0,Hr/2,-rt/2),...gs,...postGeo(k.x-xm,py,0)]);
   st.rotateX(Math.PI/2);st.computeBoundingBox();st.translate(0,0,-st.boundingBox.min.z);
   return{wall,stand:st,Wb,Hr}}
-function showWarn(){const e=document.getElementById('warn');if(e)e.textContent=v.warn.join(' ')}
+function missing(font,t){return [...new Set([...t].filter(c=>c.trim()&&!font.charToGlyphIndex(c)))].join(' ')}
+function showWarn(){const e=document.getElementById('warn');if(e)e.textContent=[...v.warn,...(v.nwarn?['Jméno: font nemá znaky '+v.nwarn+', ve jménu se vynechají.']:[])].join(' ')}
 function buildLetter(){
-  letterPaths=textPaths(fcache[v.lf],v.ch||'T',v.lh,true);v.warn=[];v.key=null;
+  letterPaths=textPaths(fcache[v.lf],v.ch||'T',v.lh,true);v.warn=[];v.key=null;{const ml=missing(fcache[v.lf],v.ch||'T');if(ml)v.warn.push('Font nemá znak '+ml+', písmeno se nevykreslí.')}
   const parts=tree(letterPaths).Childs().length,AR=P=>Math.abs(P.reduce((s,c)=>s+CL.Clipper.Area(c),0));
   if(parts>1)v.warn.push(`Znak se skládá z ${parts} oddělených dílů, nedrží pohromadě (např. háček nebo tečka).`);
   if(letterPaths.length&&AR(off(off(letterPaths,-1.5),1.5))<.92*AR(letterPaths))v.warn.push('Tenké tahy pod 3 mm, písmeno bude křehké.');
@@ -217,6 +229,19 @@ function buildModel(it){
   it.h=(b.max.z-b.min.z)*sc;it.P=Math.min(it.P,maxP(),it.h*.8);it.paths=footprint(g,it.P);it.mg=g;
   it.mesh.geometry.dispose();it.mesh.geometry=g.clone();it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=v.D-it.P;
 }
+const idb=()=>new Promise((res,rej)=>{const q=indexedDB.open('pismena',1);q.onupgradeneeded=()=>q.result.createObjectStore('dec',{keyPath:'id',autoIncrement:true});q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});
+const dbRun=async(mode,fn)=>{try{const d=await idb();return await new Promise((res,rej)=>{const t=d.transaction('dec',mode),q=fn(t.objectStore('dec'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})}catch(e){return null}};
+const libLoad=async()=>{lib=(await dbRun('readonly',s=>s.getAll()))||[]};
+let tr;function thumb(g){
+  tr??=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});tr.setSize(120,120);
+  const sc=new THREE.Scene(),c=new THREE.PerspectiveCamera(30,1,.1,9000);sc.add(new THREE.HemisphereLight(0xffffff,0x8899aa,1.2));
+  const d=new THREE.DirectionalLight(0xffffff,1.4);d.position.set(1,2,3);sc.add(d);g.computeBoundingBox();
+  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xb9c6d6,roughness:.55})),bb=g.boundingBox;m.position.sub(bb.getCenter(new THREE.Vector3()));sc.add(m);
+  c.position.set(0,0,bb.getSize(new THREE.Vector3()).length()*1.7);tr.render(sc,c);return tr.domElement.toDataURL('image/png')}
+async function importModel(g,name,buf){let th='';try{th=thumb(g.clone())}catch(e){}
+  await dbRun('readwrite',s=>s.add({name:name.replace(/\.stl$/i,'').slice(0,24),buf,thumb:th}));await libLoad();addModel(g,name)}
+function libAdd(id){const d=lib.find(x=>x.id==id);if(d)addModel(new STLLoader().parse(d.buf),d.name)}
+async function libDel(id){await dbRun('readwrite',s=>s.delete(id));await libLoad();panel()}
 function addModel(g,name){
   g=g.index?g.toNonIndexed():g;g.computeBoundingBox();const b=g.boundingBox,nat=Math.max(b.max.x-b.min.x,b.max.y-b.min.y);
   const it={id:++uid,kind:'Model',label:name.replace(/\.stl$/i,'').slice(0,24),src:g,ox:0,oy:0,size:Math.round(Math.min(150,Math.max(10,nat>150?60:nat))),rot:0,T:0,P:1.5,clr:.2,color:'#ffffff',mesh:new THREE.Mesh(new THREE.BufferGeometry(),mat('#ffffff'))};
@@ -227,6 +252,7 @@ function buildItem(it){
   if(it.src)return buildModel(it);
   it.P=Math.min(it.P,maxP());
   it.paths=it.kind=='Jméno'?textPaths(fcache[v.nf],v.nm,it.size,false):decoPaths(it.kind,it.size);
+  if(it.kind=='Jméno'){v.nwarn=missing(fcache[v.nf],v.nm);showWarn()}
   it.mesh.geometry.dispose();it.mesh.geometry=geo(it.paths,it.T+it.P)||new THREE.BufferGeometry();
   it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=v.D-it.P;
 }
@@ -249,52 +275,47 @@ const end=()=>{drag=false;ctl.enabled=true};
 renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
 
 /* ---------- panel ---------- */
-const pn=document.getElementById('pn');
+const pnl=document.getElementById('pl'),pnr=document.getElementById('pr');
+let lib=[];
 const R=(id,l,mn,mx,val,st=1)=>`<label><span>${l}</span><input type="range" id="${id}" min="${mn}" max="${mx}" step="${st}" value="${val}"><output>${val}</output></label>`;
 const opts=(o,cur)=>Object.keys(o).map(k=>`<option ${k==cur?'selected':''}>${k}</option>`).join('');
 const pk=k=>`<div class="pkrow"><span>Font</span><button type="button" class="fp" data-pk="${k}" style="font-family:'${v[k]}',sans-serif">${v[k]}</button></div><div class="fg" id="fg_${k}" hidden></div>`;
 function openPicker(k){const g=document.getElementById('fg_'+k);if(!g.hidden){g.hidden=true;return}
-  if(!g.innerHTML){const smp=(k=='lf'?v.ch:v.nm)||'Aa',tile=([n,,,w,lw,lt])=>`<button type="button" class="tile${n==v[k]?' on':''}" data-p="${k}" data-n="${n}"><span style="font-family:'${n}',sans-serif">${smp}</span><b>${n}${k=='lf'?(lt?' · '+lt:''):w?w==1?' · tenké místy':' · příliš tenké':''}</b></button>`;
-    g.innerHTML=[['p','Psací (spojité)'],['t','Tučné a ostatní']].map(([t,h])=>`<div class="gh">${h}</div>`+FL.filter(x=>x[2]==t).sort((a,b)=>k=='lf'?a[4]-b[4]:a[3]-b[3]).map(tile).join('')).join('');
+  if(!g.innerHTML){const smp=(k=='lf'?v.ch:v.nm)||'Aa',tile=([n,,,w,lw,lt,ms])=>`<button type="button" class="tile${n==v[k]?' on':''}" data-p="${k}" data-n="${n}"><span style="font-family:'${n}',sans-serif">${smp}</span><b>${n}${k=='lf'?(lt?' · '+lt:''):w?w==1?' · tenké místy':' · příliš tenké':''}${ms?' · chybí '+ms:''}</b></button>`;
+    g.innerHTML=(k=='lf'?[['t','Tučné a ostatní'],['p','Psací (spojité)']]:[['p','Psací (spojité)'],['t','Tučné a ostatní']]).map(([t,h])=>`<div class="gh">${h}</div>`+FL.filter(x=>x[2]==t).sort((a,b)=>k=='lf'?a[4]-b[4]:a[3]-b[3]).map(tile).join('')).join('');
     const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){loadFace(e.target.dataset.n);io.unobserve(e.target)}}),{root:g,rootMargin:'200px'});
     g.querySelectorAll('.tile').forEach(t=>io.observe(t))}
   g.hidden=false}
 async function pickFont(k,n){await getFont(n);v[k]=n;if(k=='lf')buildLetter();else items.filter(i=>i.kind=='Jméno').forEach(buildItem);panel()}
-function panel(){
+const card=(h,body,n)=>`<section class="card"><h3>${n?`<i>${n}</i>`:''}${h}</h3>${body}</section>`;
+function left(){
+  const L=`<label><span>Znak</span><input type="text" id="ch" maxlength="1" value="${v.ch}"></label>${pk('lf')}${R('lh','Výška (mm)',80,200,v.lh)}${R('D','Hloubka (mm)',10,40,v.D)}<label><span>Barva</span><input type="color" id="lc" value="${v.lc}"></label><div id="warn" class="warn"></div>`;
+  const K=`<div class="seg"><button data-m="0" class="${v.shell?'':'on'}">Plné</button><button data-m="1" class="${v.shell?'on':''}">Skořepina</button></div>`+(v.shell
+    ?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('back','Záda (mm)',1.2,6,v.back,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2)+`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`
+    :`<p class="note">Plné písmeno bez dutiny. Čelo se vzorem a držák jsou jen u skořepiny.</p>`);
+  const N=`<label><span>Text</span><input type="text" id="nm" value="${v.nm}"></label>${pk('nf')}<button id="addn" class="wide">${items.some(i=>i.kind=='Jméno')?'Jméno je v návrhu':'Přidat jméno'}</button>`;
+  const P=`<label><span>Vzor</span><select id="pt">${[['','Žádný'],['h','Vodorovné pruhy'],['v','Svislé pruhy'],['d','Šikmé pruhy'],['k','Šachovnice'],['o','Puntíky'],['s','Hvězdičky'],['r','Srdíčka']].map(([k,n])=>`<option value="${k}" ${k==v.pt?'selected':''}>${n}</option>`).join('')}</select></label>`+
+    (v.pt?R('pw','Šířka (mm)',1,20,v.pw,.5)+(v.pt=='k'?'':R('pg','Mezera (mm)',1,30,v.pg,.5))+R('ph','Výška (mm)',.4,3,v.ph,.2)+`<label><span>Barva vzoru</span><input type="color" id="pc" value="${v.pc}"></label><label><span>Export</span><select id="pm"><option value="0" ${v.pm?'':'selected'}>Vzor jako samostatný díl</option><option value="1" ${v.pm?'selected':''}>Čelo + vzor v jednom (výměna filamentu)</option></select></label>`:'');
+  const M=`<label><span>Držák</span><select id="mnt"><option value="0" ${v.mnt?'':'selected'}>Bez držáku</option><option value="1" ${v.mnt?'selected':''}>Klíčová dírka na zádech</option></select></label><p class="note">Klíčová dírka je na zavěšení nebo na stojánek, v exportu přibude destička na zeď a stojan.</p>`;
+  return card('Písmeno',L,1)+card('Konstrukce',K,2)+card('Jméno',N,3)+(v.shell?card('Vzor čela',P,4)+card('Držák',M,5):'');
+}
+function right(){
   const it=sel;
-  pn.innerHTML=`<h2>Písmeno</h2>
-  <label><span>Znak</span><input type="text" id="ch" maxlength="1" value="${v.ch}"></label>
-  ${pk('lf')}
-  ${R('lh','Výška (mm)',80,200,v.lh)}${R('D','Hloubka (mm)',10,40,v.D)}
-  <div class="row two"><button data-m="0" class="${v.shell?'':'on'}">Plné</button><button data-m="1" class="${v.shell?'on':''}">Skořepina</button></div>
-  ${v.shell?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('back','Záda (mm)',1.2,6,v.back,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2)+`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`:''}
-  <label><span>Barva</span><input type="color" id="lc" value="${v.lc}"></label>
-  <div id="warn" class="warn"></div>
-  <h2>Jméno</h2>
-  <label><span>Text</span><input type="text" id="nm" value="${v.nm}"></label>
-  ${pk('nf')}
-  <button id="addn" style="width:100%">${items.some(i=>i.kind=='Jméno')?'Jméno je v návrhu':'Přidat jméno'}</button>
-  <h2>Dekorace</h2>
-  <div class="row">${Object.keys(DEC).map(k=>`<button data-d="${k}">${k}</button>`).join('')}</div>
-  <button id="upl" style="width:100%;margin-top:8px">Nahrát vlastní STL…</button><input type="file" id="stlf" accept=".stl" hidden>
-  <div id="list">${items.map(i=>`<button data-s="${i.id}" class="${i===sel?'on':''}">${i.label||i.kind}</button>`).join('')}</div>
-  ${it?`<h2>Vybráno: ${it.kind}</h2>
-  <label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>
-  ${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="row"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění (mm)',0.5,maxP(),it.P,.1)}${R('iv','Vůle (mm)',0,.5,it.clr,.05)}
-  <button id="del" style="width:100%">Smazat díl</button>`:''}
-  ${v.shell?`<h2>Vzor čela</h2>
-  <label><span>Vzor</span><select id="pt">${[['','Žádný'],['h','Vodorovné pruhy'],['v','Svislé pruhy'],['d','Šikmé pruhy'],['k','Šachovnice'],['o','Puntíky'],['s','Hvězdičky'],['r','Srdíčka']].map(([k,n])=>`<option value="${k}" ${k==v.pt?'selected':''}>${n}</option>`).join('')}</select></label>
-  ${v.pt?R('pw','Šířka/velikost (mm)',1,20,v.pw,.5)+(v.pt=='k'?'':R('pg','Mezera (mm)',1,30,v.pg,.5))+R('ph','Výška (mm)',.4,3,v.ph,.2)+`<label><span>Barva vzoru</span><input type="color" id="pc" value="${v.pc}"></label><label><span>Export</span><select id="pm"><option value="0" ${v.pm?'':'selected'}>Vzor jako samostatný díl</option><option value="1" ${v.pm?'selected':''}>Čelo + vzor v jednom (výměna filamentu)</option></select></label>`:''}`:''}
-  ${v.shell?`<h2>Držák (zavěšení / stojánek)</h2><label><span>Držák</span><select id="mnt"><option value="0" ${v.mnt?'':'selected'}>Bez držáku</option><option value="1" ${v.mnt?'selected':''}>Klíčová dírka na zádech</option></select></label>`:''}
-  <label><span>Písmeno v STL</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Všechny díly čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu (čelem nahoru)</option></select></label>
-  <button id="go">Stáhnout STL (ZIP)</button><div id="msg"></div>`;
+  const parts=`<div id="list">${items.map(i=>`<button data-s="${i.id}" class="${i===sel?'on':''}">${i.label||i.kind}</button>`).join('')||'<p class="note">Zatím žádné díly.</p>'}</div>`;
+  const props=it?`<label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění',0.5,maxP(),it.P,.1)}${R('iv','Vůle',0,.5,it.clr,.05)}<button id="del" class="wide danger">Smazat díl</button>`:`<p class="note">Vyber díl v seznamu, nebo na něj klikni v náhledu.</p>`;
+  const L=`<button id="upl" class="wide" style="margin-top:0">Nahrát STL…</button><input type="file" id="stlf" accept=".stl" hidden>`+(lib.length?`<div class="lib">${lib.map(d=>`<div class="lt"><button data-lib="${d.id}" title="Přidat do návrhu"><img src="${d.thumb||''}" alt=""><b>${d.name}</b></button><button class="x" data-libdel="${d.id}" title="Odebrat z knihovny" aria-label="Odebrat">×</button></div>`).join('')}</div>`:`<p class="note">Knihovna je prázdná. Nahraný STL se tady uloží a příště ho jen přidáš do návrhu.</p>`);
+  const E=`<label><span>Orientace</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu</option></select></label><p class="note">ZIP obsahuje samostatný STL pro každý díl a seznam dílů s barvami.</p><div id="msg"></div>`;
+  return card('Díly v návrhu',parts)+card(it?'Vybraný díl: '+(it.label||it.kind):'Vybraný díl',props)+card('Knihovna dekorací',L)+card('Export',E);
+}
+function panel(){
+  const sl=[pnl.scrollTop,pnr.scrollTop];pnl.innerHTML=left();pnr.innerHTML=right();pnl.scrollTop=sl[0];pnr.scrollTop=sl[1];
   loadFace(v.lf);loadFace(v.nf);showWarn();
 }
 let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 const H={
  ch:e=>{v.ch=e.value.toUpperCase();later(buildLetter)},lf:e=>{v.lf=e.value;buildLetter()},
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
- wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,stlf:async e=>{const f=e.files[0];if(!f)return;let g;try{g=new STLLoader().parse(await f.arrayBuffer())}catch(err){document.getElementById('msg').textContent='STL se nepodařilo načíst: '+err.message;return}e.value='';addModel(g,f.name)},mnt:e=>{v.mnt=+e.value;buildLetter()},
+ wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>plate.material.color.set(v.fc=e.value),ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,stlf:async e=>{const f=e.files[0];if(!f)return;let g,buf;try{buf=await f.arrayBuffer();g=new STLLoader().parse(buf)}catch(err){document.getElementById('msg').textContent='STL se nepodařilo načíst: '+err.message;return}e.value='';importModel(g,f.name,buf)},mnt:e=>{v.mnt=+e.value;buildLetter()},
  lc:e=>letter.material.color.set(v.lc=e.value),
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -302,13 +323,14 @@ const H={
  is:e=>{sel.size=+e.value;later(()=>buildItem(sel))},ir:e=>{sel.rot=+e.value;sel.mesh.rotation.z=sel.rot*Math.PI/180},
  it:e=>{sel.T=+e.value;later(()=>buildItem(sel))},
  ip:e=>{sel.P=+e.value;later(()=>buildItem(sel))},iv:e=>sel.clr=+e.value};
-pn.addEventListener('input',e=>{const o=e.target.nextElementSibling;if(o&&o.tagName=='OUTPUT')o.textContent=e.target.value;H[e.target.id]?.(e.target)});
-pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+for(const pn of [pnl,pnr])pn.addEventListener('input',e=>{const o=e.target.nextElementSibling;if(o&&o.tagName=='OUTPUT')o.textContent=e.target.value;H[e.target.id]?.(e.target)});
+for(const pn of [pnl,pnr])pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ro){if(b.dataset.ro=='x')sel.ox=(sel.ox+1)%4;else if(b.dataset.ro=='y')sel.oy=(sel.oy+1)%4;else sel.ox=(sel.ox+2)%4;buildItem(sel);return}
+  if(b.dataset.lib){libAdd(+b.dataset.lib);return}
+  if(b.dataset.libdel){libDel(+b.dataset.libdel);return}
   if(b.dataset.pk){openPicker(b.dataset.pk);return}
   if(b.dataset.p){pickFont(b.dataset.p,b.dataset.n);return}
   if(b.dataset.m!==undefined){v.shell=+b.dataset.m;items.forEach(buildItem);buildLetter();panel()}
-  else if(b.dataset.d)addItem(b.dataset.d,(Math.random()-.5)*40,(Math.random()-.5)*40);
   else if(b.dataset.s)select(items.find(i=>i.id==b.dataset.s));
   else if(b.id=='addn'&&!items.some(i=>i.kind=='Jméno'))addItem('Jméno');
   else if(b.id=='del'){scene.remove(sel.mesh);items.splice(items.indexOf(sel),1);select(items[0]||null)}
@@ -348,5 +370,7 @@ async function exportZip(btn){
   btn.disabled=false;
 }
 
-await Promise.all([getFont(v.lf),getFont(v.nf)]);buildLetter();addItem('Jméno');
+await Promise.all([getFont(v.lf),getFont(v.nf),libLoad()]);buildLetter();addItem('Jméno');
+document.getElementById('go').addEventListener('click',e=>exportZip(e.currentTarget));
+document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const p={front:[0,-40,420],back:[0,-40,-420],side:[420,-30,40],top:[0,420,40]}[b.dataset.view];cam.position.set(...p);ctl.target.set(0,0,10);ctl.update()});
 </script></body></html>
