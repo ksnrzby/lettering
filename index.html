@@ -289,7 +289,8 @@ function buildLetter(){
           const kg=geo(khPaths(k.x,k.y),bk+.04);if(kg){kg.translate(0,0,-.02);g=sub(g,kg)}}}
     }
   }
-  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();buildFront();if(v.rcs>0)items.forEach(buildItem);buildBoard();showWarn();
+  inL=1;try{if(v.rcs>0&&items.some(i=>i.clip===1))items.forEach(buildItem);g=rimCut(g);v.cutSig=cutSig()}finally{inL=0}
+  letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();buildFront();buildBoard();showWarn();
 }
 const placeZ=()=>{plate.position.z=faceTop()-v.front;items.forEach(it=>it.mesh.position.z=faceTop()-embed(it))};
 function footprint(g,P){
@@ -446,7 +447,17 @@ const ZS=[
 ZOD.forEach((n,i)=>dk('Znamení',n,['#2f3a8f','#ffd166'],()=>{const d=gc(0,0,.5,72),ink=gU(...ZS[i]().map(p=>stk(p.map(([x,y])=>[x*.9,y*.9]),.07)));
   return[Ly(0,0,d),Ly(1,1,gU(gD(gr(d,-.03),gr(d,-.09)),gI(ink,gr(d,-.1))))]},40));
 DEKO.forEach(d=>{if(d.cat=='Znamení')d.sub=ZDATE[ZOD.indexOf(d.n)]});
-const clipOn=it=>v.rcs>0&&it.clip!==0&&letterPaths.length;
+const clipOn=it=>v.rcs>0&&it.clip===1&&letterPaths.length;
+let inL=0,tl;
+function rimCut(g){
+  if(v.rcs<=0||!g.attributes.position)return g;const rim=gD(letterPaths,off(letterPaths,-v.wall)),fT=faceTop();
+  for(const it of items){it.rimHit=0;if(it.cut===0||it.clip===1||!it.paths||!it.paths.length)continue;const fp=worldPaths(it,off(itemArea(it),it.clr));if(!gI(fp,rim).length)continue;
+    const e=embed(it),c=geo(gI(fp,off(letterPaths,.5)),v.D+.3-(fT-e));if(!c)continue;c.translate(0,0,fT-e);g=sub(g,c);it.rimHit=1}
+  return g}
+function cutSig(){if(v.rcs<=0)return'';const rim=gD(letterPaths,off(letterPaths,-v.wall));let o='';
+  for(const it of items){if(it.cut===0||it.clip===1||!it.paths||!it.paths.length)continue;const fp=worldPaths(it,off(itemArea(it),it.clr));if(!gI(fp,rim).length)continue;
+    let h=0;fp.forEach(p=>p.forEach(q=>{h=(h*31+q.X+q.Y*7)%1000003}));o+=it.id+':'+h+';'}return o}
+function laterL(){if(inL||v.rcs<=0)return;clearTimeout(tl);tl=setTimeout(()=>{if(cutSig()!==v.cutSig)buildLetter()},500)}
 function clipLocal(it,P){if(!clipOn(it)||!P.length)return P;const A=off(letterPaths,-v.wall),a=-it.rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),px=it.mesh.position.x*S,py=it.mesh.position.y*S;
   return gI(P,A.map(p=>p.map(q=>{const x=q.X-px,y=q.Y-py;return{X:Math.round(x*c-y*sn),Y:Math.round(x*sn+y*c)}})))}
 const decoRaw={};
@@ -455,7 +466,7 @@ function decoLayers(key,size){
     L.forEach(l=>l.P.forEach(p=>p.forEach(q=>{x0=Math.min(x0,q.X);x1=Math.max(x1,q.X);y0=Math.min(y0,q.Y);y1=Math.max(y1,q.Y)})));
     decoRaw[key]={L,cx:(x0+x1)/2,cy:(y0+y1)/2,m:Math.max(x1-x0,y1-y0)}}
   const r=decoRaw[key],f=size*S/r.m;
-  return r.L.map(l=>({c:l.c,z:l.z,P:l.P.map(p=>p.map(q=>({X:Math.round((q.X-r.cx)*f),Y:Math.round((q.Y-r.cy)*f)})))}))}
+  return r.L.map(l=>({c:l.c,z:l.z,P:CL.Clipper.CleanPolygons(l.P.map(p=>p.map(q=>({X:Math.round((q.X-r.cx)*f),Y:Math.round((q.Y-r.cy)*f)}))),size*S/1500)}))}
 const thumbs={};
 function dthumb(d){if(thumbs[d.k])return thumbs[d.k];const L=decoLayers(d.k,60),cv=document.createElement('canvas');cv.width=cv.height=96;const g=cv.getContext('2d');
   g.fillStyle='#8a97a8';g.fillRect(0,0,96,96);g.translate(48,48);const sc=76/(60*S);
@@ -540,7 +551,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   off0.copy(pt).sub(sel.mesh.position);drag=true;ctl.enabled=false;renderer.domElement.setPointerCapture(e.pointerId)});
 renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;ray.setFromCamera(ndc(e),cam);
   if(ray.ray.intersectPlane(pl,pt)){sel.mesh.position.x=pt.x-off0.x;sel.mesh.position.y=pt.y-off0.y}});
-const end=()=>{if(drag){if(v.rcs>0&&sel&&sel.clip!==0)buildItem(sel);laterB()}drag=false;ctl.enabled=true};
+const end=()=>{if(drag){if(v.rcs>0&&sel&&sel.clip===1)buildItem(sel);laterB()}drag=false;ctl.enabled=true};
 renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
 
 /* ---------- panel ---------- */
@@ -583,7 +594,7 @@ const TAGUI=it=>`<label><span>Text</span><input type="text" id="ttx" value="${it
 function right(){
   const it=sel;
   const parts=`<div id="list">${items.map(i=>`<button data-s="${i.id}" class="${i===sel?'on':''}">${i.label||i.kind}</button>`).join('')||'<p class="note">Zatím žádné díly.</p>'}</div>`;
-  const props=it?`${it.deco?DECUI(it):`<label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>`}${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění',0.5,maxP(),it.P,.1)}${R('iv','Vůle',0,.5,it.clr,.05)}${v.rcs>0?`<label class="chk"><input type="checkbox" id="clp" ${it.clip!==0?'checked':''}> Oříznout přesah mimo okraj písmene</label>`:''}${it.tag?TAGUI(it):OLUI(it)}<button id="del" class="wide danger">Smazat díl</button>`:`<p class="note">Vyber díl v seznamu, nebo na něj klikni v náhledu.</p>`;
+  const props=it?`${it.deco?DECUI(it):`<label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>`}${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění',0.5,maxP(),it.P,.1)}${R('iv','Vůle',0,.5,it.clr,.05)}${v.rcs>0?`<label class="chk"><input type="checkbox" id="cut" ${it.cut!==0?'checked':''}> Vyříznout cestu v okraji písmene</label><label class="chk"><input type="checkbox" id="clp" ${it.clip===1?'checked':''}> Oříznout přesah (místo vyříznutí)</label>`:''}${it.tag?TAGUI(it):OLUI(it)}<button id="del" class="wide danger">Smazat díl</button>`:`<p class="note">Vyber díl v seznamu, nebo na něj klikni v náhledu.</p>`;
   const L=`<button id="upl" class="wide" style="margin-top:0">Nahrát STL…</button><input type="file" id="stlf" accept=".stl" hidden>`+(lib.length?`<div class="lib">${lib.map(d=>`<div class="lt"><button data-lib="${d.id}" title="Přidat do návrhu"><img src="${d.thumb||''}" alt=""><b>${d.name}</b></button><button class="x" data-libdel="${d.id}" title="Odebrat z knihovny" aria-label="Odebrat">×</button></div>`).join('')}</div>`:`<p class="note">Knihovna je prázdná. Nahraný STL se tady uloží a příště ho jen přidáš do návrhu.</p>`);
   const E=`<label><span>Orientace</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu</option></select></label><p class="note">ZIP obsahuje samostatný STL pro každý díl a seznam dílů s barvami.</p><div id="msg"></div>`;
   const dtab=v.dcat||DCATS[0],DC=`<div class="seg" style="grid-template-columns:repeat(3,1fr)">${DCATS.map(c=>`<button data-dcat="${c}" class="${c==dtab?'on':''}">${c}</button>`).join('')}</div><div class="lib">${DEKO.filter(d=>d.cat==dtab).map(d=>`<div class="lt"><button data-dk="${d.k}" title="${d.sub||'Přidat do návrhu'}"><img src="${dthumb(d)}" alt=""><b>${d.n}</b></button></div>`).join('')}</div><p class="note">Každá dekorace je z vrstev v různých barvách (barvy změníš po kliknutí na díl). Zaoblený profil dělá z plochého dílu polštářek.</p>`;
@@ -594,7 +605,7 @@ function panel(){
   loadFace(v.lf);loadFace(v.nf);if(sel&&sel.tag)loadFace(sel.font);showWarn();renderPal();
 }
 let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
-let tb;const laterB=()=>{clearTimeout(tb);tb=setTimeout(buildBoard,250)};
+let tb;const laterB=()=>{clearTimeout(tb);tb=setTimeout(buildBoard,250);laterL()};
 const H={
  ...Object.fromEntries([0,1,2,3,4,5].map(i=>['dc'+i,e=>{if(sel&&sel.cols){sel.cols[i]=e.value;recolor(sel)}}])),
  dz:e=>{sel.dz=+e.value;later(()=>buildItem(sel))},dprof:e=>{sel.dome=+e.value;buildItem(sel)},
@@ -614,7 +625,7 @@ const H={
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
  ic:e=>sel.mesh.material.color.set(sel.color=e.value),
- is:e=>{sel.size=+e.value;later(()=>buildItem(sel))},ir:e=>{sel.rot=+e.value;sel.mesh.rotation.z=sel.rot*Math.PI/180;if(v.rcs>0&&sel.clip!==0)later(()=>buildItem(sel));laterB()},clp:e=>{sel.clip=e.checked?1:0;buildItem(sel)},
+ is:e=>{sel.size=+e.value;later(()=>buildItem(sel))},ir:e=>{sel.rot=+e.value;sel.mesh.rotation.z=sel.rot*Math.PI/180;if(v.rcs>0&&sel.clip===1)later(()=>buildItem(sel));laterB()},clp:e=>{sel.clip=e.checked?1:0;buildItem(sel);laterL()},cut:e=>{sel.cut=e.checked?1:0;later(buildLetter)},
  it:e=>{sel.T=+e.value;later(()=>buildItem(sel))},
  ip:e=>{sel.P=+e.value;later(()=>buildItem(sel))},iv:e=>sel.clr=+e.value};
 for(const pn of [pnl,pnr])pn.addEventListener('input',e=>{const d=e.target.dataset;if(d.pc){v.ovr[d.pc]=e.target.value;buildFront();return}if(d.ps){v.hid[d.ps]=!e.target.checked;buildFront();return}
@@ -642,6 +653,7 @@ for(const pn of [pnl,pnr])pn.addEventListener('click',e=>{const b=e.target.close
 const hex=c=>c.replace('#','');
 async function exportZip(btn){
   const msg=document.getElementById('msg');btn.disabled=true;msg.textContent='Počítám díly…';await new Promise(r=>setTimeout(r,50));
+  if(cutSig()!==v.cutSig)buildLetter();
   try{
     const ex=new STLExporter(),z=new JSZip(),L=[];
     const add=(n,g,info)=>{const dv=ex.parse(new THREE.Mesh(g),{binary:true});z.file(n,new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength));L.push(n+' – '+info)};
@@ -657,8 +669,8 @@ async function exportZip(btn){
     for(const it of items){
       if(pp){const p2=geo(off(itemArea(it),it.clr),v.ph+.04);if(p2)pp=sub(pp,wp(it,p2,fT-.02))}
       if(rel)continue;
-      const p=geo(off(it.paths,it.clr),it.P+.02);if(!p)continue;wp(it,p,fT-it.P);
-      g=sub(g,p);fl.forEach(f=>{if(f.pk)f.g=sub(f.g,p)})}
+      const p=geo(gI(worldPaths(it,off(it.paths,it.clr)),off(letterPaths,.5)),it.P+.02);if(!p)continue;p.translate(0,0,fT-it.P);
+      if(!it.rimHit)g=sub(g,p);fl.forEach(f=>{if(f.pk)f.g=sub(f.g,p)})}
     const flip=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,v.D):q.clone();
     const fh=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,fT+v.ph):q.clone();
     const mg=(a,b)=>mergeGeometries([a,b].map(q=>{q=q.clone();if(q.index)q=q.toNonIndexed();q.deleteAttribute('uv');return q}));
