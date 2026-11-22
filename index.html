@@ -53,6 +53,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 @media(max-width:1060px){body{height:auto;min-height:100%}main{display:flex;flex-direction:column}
 #cv{position:sticky;top:0;z-index:5;height:50vh;order:-1;border-bottom:1px solid var(--ln)}#pl,#pr{overflow:visible;border:0}header small{display:none}}
 .tgrow{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin:6px 0}.tgrow input[type=text]{min-width:0}
+.slot{display:grid;grid-template-columns:1fr auto 40px;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--ln)}.slot small{display:block;color:var(--mut);font-size:12px}.slot b{font-size:13.5px;word-break:break-word}.slot button{min-height:34px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 <script type="importmap">{"imports":{
@@ -133,7 +134,7 @@ const ev=new Evaluator();ev.attributes=['position','normal'];
 const sub=(a,b)=>{if(!a||!b)return a;const A=new Brush(a),B=new Brush(b);A.updateMatrixWorld();B.updateMatrixWorld();return ev.evaluate(A,B,SUBTRACTION).geometry};
 
 /* ---------- stav a scéna ---------- */
-const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#a8cfee',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#ffffff',pm:0,warn:[],mnt:0,bk:3,key:null,img:'',isz:120,ix:0,iy:0,ir:0,imt:24,ovr:{},hid:{},lsz:150,lx:0,ly:0,lmin:.8,lmax:2.4,lneg:0,lres:.4,hasPlate:false,tx:{date:'15. 3. 2024',time:'14:35',weight:'3 450 g',height:'51 cm'},rcs:0,rel:0,bd:0,bo:8,bt:3,bc:'#8a5a3a',rz:{}};
+const v={ch:'T',lf:'Titan One',lh:160,shell:1,wall:2.4,front:3,D:20,lc:'#a8cfee',nm:'Theodor',nf:'Pacifico',back:3,fc:'#a8cfee',ori:1,pt:'',pw:6,pg:6,ph:1,pc:'#ffffff',pm:0,warn:[],mnt:0,bk:3,key:null,img:'',isz:120,ix:0,iy:0,ir:0,imt:24,ovr:{},hid:{},lsz:150,lx:0,ly:0,lmin:.8,lmax:2.4,lneg:0,lres:.4,hasPlate:false,tx:{date:'15. 3. 2024',time:'14:35',weight:'3 450 g',height:'51 cm'},rcs:0,rel:0,bd:0,bo:8,bt:3,bc:'#8a5a3a',rz:{},lamp:0,scn:4,scty:0,conn:'usbc',cxo:0,cyo:0};
 const items=[];let sel=null,uid=0;
 const cv=document.getElementById('cv'),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));cv.prepend(renderer.domElement);
@@ -220,7 +221,7 @@ function loadSvg(text){
   let cover=[];const raw=new Map();
   for(let i=L.length-1;i>=0;i--){const subj=paths(tree(L[i].paths)),vis=cover.length?paths(tree(subj,CL.ClipType.ctDifference,cover)):subj;
     if(vis.length)raw.set(L[i].col,[...(raw.get(L[i].col)||[]),...vis]);cover=cover.length?paths(tree([...cover,...subj])):subj}
-  svg={raw};v.ovr={};v.hid={};
+  svg={raw,src:text};v.ovr={};v.hid={};
 }
 function clusters(){
   if(!svg)return [];const cl=[],dist=(a,b)=>{const A=new THREE.Color(a),B=new THREE.Color(b);return Math.hypot(A.r-B.r,A.g-B.g,A.b-B.b)*255};
@@ -267,6 +268,37 @@ function renderPal(){const e=document.getElementById('pal');if(!e)return;
   e.innerHTML=clusters().map(g=>`<div class="pr"><input type="color" data-pc="${g.col}" value="${colOf(g)}"><label class="chk"><input type="checkbox" data-ps="${g.col}" ${v.hid[g.col]?'':'checked'}> zobrazit</label><input type="range" data-pe="${g.col}" min="0" max="3" step=".2" value="${v.rz[g.col]||0}" title="Vystoupení nad čelo (mm)" style="width:78px"></div>`).join('')}
 function missing(font,t){return [...new Set([...t].filter(c=>c.trim()&&!font.charToGlyphIndex(c)))].join(' ')}
 function showWarn(){const e=document.getElementById('warn');if(e)e.textContent=[...v.warn,...(v.nwarn?['Jméno: font nemá znaky '+v.nwarn+', ve jménu se vynechají.']:[])].join(' ')}
+
+/* ---------- lampa: sundavací záda na šroubky ---------- */
+const LAMP={shank:3.4,head:6.6,cb:1.6,bh:9,usb:[9.4,3.8],cab:5.5};
+const lid=new THREE.Mesh(new THREE.BufferGeometry(),mat(v.lc));lid.visible=false;scene.add(lid);
+let lidG=null,lampInfo=null;
+function lampPlan(cavR,n){
+  const rb=v.scty?4.2:3.4,hole=v.scty?2.1:1.3,res={spots:[],conn:null,rb,hole};
+  if(v.conn!='none'){const E=off(cavR,-7),pts=[];E.forEach(c=>c.forEach(p=>pts.push([p.X/S,p.Y/S])));
+    if(pts.length){const b=pts.reduce((a,c)=>c[1]<a[1]?c:a);res.conn={kind:v.conn,x:b[0]+v.cxo,y:b[1]+v.cyo}}}
+  const avoid=[];if(res.conn)avoid.push([res.conn.x,res.conn.y,12]);
+  if(v.key){const rr=KH.hd/2+KH.clr+rb+1;[0,.5,1].forEach(t=>avoid.push([v.key.x,v.key.y+KH.sl*t,rr]))}
+  const cand=[];off(cavR,-(rb-.9)).forEach(c=>{for(let i=0;i<c.length;i++){const a=c[i],b=c[(i+1)%c.length],len=Math.hypot(b.X-a.X,b.Y-a.Y)/S,k=Math.max(1,Math.round(len/3));
+    for(let j=0;j<k;j++)cand.push([(a.X+(b.X-a.X)*j/k)/S,(a.Y+(b.Y-a.Y)*j/k)/S])}});
+  const ok=cand.filter(p=>!avoid.some(([x,y,r])=>Math.hypot(p[0]-x,p[1]-y)<r));
+  if(ok.length){res.spots.push(ok.reduce((a,b)=>b[1]-b[0]*.01>a[1]-a[0]*.01?b:a));
+    while(res.spots.length<n){let best=null,bd=-1;for(const p of ok){const d=Math.min(...res.spots.map(q=>Math.hypot(p[0]-q[0],p[1]-q[1])));if(d>bd){bd=d;best=p}}
+      if(!best||bd<2*rb+2)break;res.spots.push(best)}}
+  return res}
+function lidGeo(lidT,spots,conn){
+  const base=off(letterPaths,-v.wall-.15),cb=Math.min(LAMP.cb,lidT-.8),rect=(x,y,w,h)=>mm2P([[x-w/2,y-h/2],[x+w/2,y-h/2],[x+w/2,y+h/2],[x-w/2,y+h/2]]);
+  const thr=[];if(conn)thr.push(conn.kind=='usbc'?rect(conn.x,conn.y,LAMP.usb[0],LAMP.usb[1]):mm2P(circ(conn.x,conn.y,LAMP.cab/2,32)));
+  if(v.key)thr.push(...khPaths(v.key.x,v.key.y));
+  const shank=spots.map(p=>mm2P(circ(p[0],p[1],LAMP.shank/2,24))),head=spots.map(p=>mm2P(circ(p[0],p[1],LAMP.head/2,28)));
+  const dif=(A,B)=>B.length?paths(tree(A,CL.ClipType.ctDifference,B)):A;
+  const A=geo(dif(base,[...thr,...head]),cb),B=geo(dif(base,[...thr,...shank]),lidT-cb);
+  if(!A||!B)return null;B.translate(0,0,cb);return mgAll([A,B])}
+const LAMPUI=()=>v.shell?`<label class="chk"><input type="checkbox" id="lamp" ${v.lamp?'checked':''}> Sundavací záda na šroubky (lampa)</label>`+(v.lamp?
+  R('scn','Počet šroubů',2,6,v.scn,1)+`<label><span>Upevnění</span><select id="scty"><option value="0" ${v.scty?'':'selected'}>Samořezný šroub M3</option><option value="1" ${v.scty?'selected':''}>Závitová vložka M3</option></select></label>`+
+  `<label><span>Napájení</span><select id="conn"><option value="usbc" ${v.conn=='usbc'?'selected':''}>Okno na USB-C zásuvku</option><option value="cab" ${v.conn=='cab'?'selected':''}>Otvor na kabel Ø 5,5</option><option value="none" ${v.conn=='none'?'selected':''}>Bez otvoru</option></select></label>`+
+  R('cxo','Napájení: posun X (mm)',-40,40,v.cxo,1)+R('cyo','Napájení: posun Y (mm)',-40,40,v.cyo,1)+
+  `<p class="note">Záda jsou víko zapuštěné do písmene a přišroubované do sloupků uvnitř. Čelo se tiskne zvlášť, tenčí a světlé (1,6–2 mm), aby prosvítalo. Písmeno se tiskne zády dolů, víko vnější stranou dolů.</p>`:''):'';
 function buildLetter(){
   letterPaths=textPaths(fcache[v.lf],v.ch||'T',v.lh,true);v.warn=[];v.key=null;{const ml=missing(fcache[v.lf],v.ch||'T');if(ml)v.warn.push('Font nemá znak '+ml+', písmeno se nevykreslí.')}
   const parts=tree(letterPaths).Childs().length,AR=P=>Math.abs(P.reduce((s,c)=>s+CL.Clipper.Area(c),0));
@@ -275,19 +307,39 @@ function buildLetter(){
   let g=geo(letterPaths,v.D)||new THREE.BufferGeometry();plate.visible=false;v.hasPlate=false;
   const fT=faceTop();
   if(!v.shell&&v.rcs>0&&g.attributes.position){const pk=geo(off(letterPaths,-v.wall),v.rcs+.04);if(pk){pk.translate(0,0,fT);g=sub(g,pk)}else v.warn.push('Okraj je příliš široký, odsazení se do písmene nevejde.')}
-  if(v.shell&&g.attributes.position){ // záda zavřená, otevřeno zepředu; čelo je samostatný díl uložený na římse
-    const L=letterPaths,bk=Math.max(v.mnt?3:.8,Math.min(v.back,v.D-v.front-v.rcs-2));v.bk=bk;
-    const cav=geo(off(L,-(v.wall+1.5)),v.D-v.front-v.rcs-bk+.04),rec=geo(off(L,-v.wall),v.front+v.rcs+.04),pg=geo(off(L,-v.wall-.15),v.front);
-    if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}else v.warn.push('Dutina se do tohoto písmene nevejde. Zmenši stěnu, nebo zvětši výšku.');
-    if(rec){rec.translate(0,0,fT-v.front);g=sub(g,rec)}
-    if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true;v.hasPlate=true}
+  lid.visible=false;lidG=null;lampInfo=null;
+  if(v.shell&&g.attributes.position){ // čelo je samostatný díl uložený na římse; záda buď zavřená, nebo sundavací víko (lampa)
+    const L=letterPaths,lamp=!!v.lamp,room=v.D-v.front-v.rcs,bk=lamp?Math.max(2.4,Math.min(v.back,room-2)):Math.max(v.mnt?3:.8,Math.min(v.back,room-2));v.bk=bk;
+    const cavR=off(L,-(v.wall+1.5)),rec=geo(off(L,-v.wall),v.front+v.rcs+.04),pg=geo(off(L,-v.wall-.15),v.front);
+    if(!cavR.length)v.warn.push('Dutina se do tohoto písmene nevejde. Zmenši stěnu, nebo zvětši výšku.');
     if(v.mnt){
-      if(v.D-v.front-v.rcs-bk<KH.ht+1.5)v.warn.push('Dutina je příliš mělká pro držák (hlavička 3 mm). Zvětši hloubku nebo uber záda, čelo či odsazení.');
+      if(room-bk<KH.ht+1.5)v.warn.push('Dutina je příliš mělká pro držák (hlavička 3 mm). Zvětši hloubku nebo uber záda, čelo či odsazení.');
       else{const k=solveKey(L);
         if(!k)v.warn.push('Pro držák se v písmeni nenašlo dost široké místo (potřeba tah aspoň asi 18 mm).');
-        else{v.key=k;if(Math.abs(k.x-k.cx)>6)v.warn.push('Těžiště je mimo osu zavěšení, písmeno se bude naklánět.');
-          const kg=geo(khPaths(k.x,k.y),bk+.04);if(kg){kg.translate(0,0,-.02);g=sub(g,kg)}}}
+        else{v.key=k;if(Math.abs(k.x-k.cx)>6)v.warn.push('Těžiště je mimo osu zavěšení, písmeno se bude naklánět.')}}
     }
+    if(!lamp){
+      const cav=geo(cavR,room-bk+.04);if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}
+      if(v.key){const kg=geo(khPaths(v.key.x,v.key.y),bk+.04);if(kg){kg.translate(0,0,-.02);g=sub(g,kg)}}
+    }else if(cavR.length){
+      const bh=Math.min(LAMP.bh,room-bk-3),plan=bh>=4?lampPlan(cavR,v.scn):{spots:[],conn:null,rb:3.4,hole:1.3};
+      if(bh<4)v.warn.push('Dutina je mělká na sloupky pro šrouby. Zvětši hloubku písmene nebo uber čelo či víko.');
+      else if(plan.spots.length<v.scn)v.warn.push(plan.spots.length?`Šrouby: v písmeni je místo jen na ${plan.spots.length} z ${v.scn}.`:'Šrouby: v písmeni není místo na sloupky, víko nebude mít čím držet.');
+      const back=geo(off(L,-v.wall),bk+.06);if(back){back.translate(0,0,-.03);g=sub(g,back)}
+      if(plan.spots.length){
+        const discs=plan.spots.map(p=>mm2P(circ(p[0],p[1],plan.rb,32))),lowP=paths(tree(cavR,CL.ClipType.ctDifference,discs));
+        const low=geo(lowP,bh+.02),high=geo(cavR,room+.02-(bk+bh-.5)),holes=geo(plan.spots.map(p=>mm2P(circ(p[0],p[1],plan.hole,24))),bh-2+.02);
+        if(low){low.translate(0,0,bk-.02);g=sub(g,low)}
+        if(high){high.translate(0,0,bk+bh-.5);g=sub(g,high)}
+        if(holes){holes.translate(0,0,bk-.02);g=sub(g,holes)}
+      }else{const cav=geo(cavR,room-bk+.04);if(cav){cav.translate(0,0,bk-.02);g=sub(g,cav)}}
+      if(plan.conn&&!paths(tree(plan.conn.kind=='usbc'?[mm2P([[plan.conn.x-LAMP.usb[0]/2,plan.conn.y-LAMP.usb[1]/2],[plan.conn.x+LAMP.usb[0]/2,plan.conn.y-LAMP.usb[1]/2],[plan.conn.x+LAMP.usb[0]/2,plan.conn.y+LAMP.usb[1]/2],[plan.conn.x-LAMP.usb[0]/2,plan.conn.y+LAMP.usb[1]/2]])]:[mm2P(circ(plan.conn.x,plan.conn.y,LAMP.cab/2,24))],CL.ClipType.ctDifference,off(L,-v.wall-.15))).length===0)
+        v.warn.push('Otvor pro napájení se nevejde do víka. Posuň ho posuvníky X a Y.');
+      lidG=lidGeo(bk,plan.spots,plan.conn);lampInfo=plan;
+      if(lidG){lid.geometry.dispose();lid.geometry=lidG;lid.material.color.set(v.lc);lid.visible=true}
+    }
+    if(rec){rec.translate(0,0,fT-v.front);g=sub(g,rec)}
+    if(pg){plate.geometry.dispose();plate.geometry=pg;plate.visible=true;v.hasPlate=true}
   }
   inL=1;try{if(v.rcs>0&&items.some(i=>i.clip===1))items.forEach(buildItem);g=rimCut(g);v.cutSig=cutSig()}finally{inL=0}
   letter.geometry.dispose();letter.geometry=g;placeZ();buildPattern();buildFront();buildBoard();showWarn();
@@ -311,8 +363,9 @@ function buildModel(it){
   it.h=(b.max.z-b.min.z)*sc;it.P=Math.min(it.P,maxP(),it.h*.8);it.paths=footprint(g,it.P);it.sil=footprint(g,1e9);it.mg=g;
   it.mesh.geometry.dispose();it.mesh.geometry=g.clone();it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=faceTop()-embed(it);updRing(it);laterB();
 }
-const idb=()=>new Promise((res,rej)=>{const q=indexedDB.open('pismena',1);q.onupgradeneeded=()=>q.result.createObjectStore('dec',{keyPath:'id',autoIncrement:true});q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});
-const dbRun=async(mode,fn)=>{try{const d=await idb();return await new Promise((res,rej)=>{const t=d.transaction('dec',mode),q=fn(t.objectStore('dec'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})}catch(e){return null}};
+const idb=()=>new Promise((res,rej)=>{const q=indexedDB.open('pismena',2);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains('dec'))d.createObjectStore('dec',{keyPath:'id',autoIncrement:true});if(!d.objectStoreNames.contains('designs'))d.createObjectStore('designs',{keyPath:'name'})};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});
+const dbS=async(store,mode,fn)=>{try{const d=await idb();return await new Promise((res,rej)=>{const t=d.transaction(store,mode),q=fn(t.objectStore(store));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})}catch(e){console.warn(e);return null}};
+const dbRun=(mode,fn)=>dbS('dec',mode,fn);
 const libLoad=async()=>{lib=(await dbRun('readonly',s=>s.getAll()))||[]};
 let tr;function thumb(g){
   tr??=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});tr.setSize(120,120);
@@ -572,8 +625,8 @@ function left(){
   const L=`<label><span>Znak</span><input type="text" id="ch" maxlength="1" value="${v.ch}"></label>${pk('lf')}${R('lh','Výška (mm)',80,200,v.lh)}${R('D','Hloubka (mm)',10,40,v.D)}<label><span>Barva</span><input type="color" id="lc" value="${v.lc}"></label><div id="warn" class="warn"></div>`;
   const K=`<div class="seg"><button data-m="0" class="${v.shell?'':'on'}">Plné</button><button data-m="1" class="${v.shell?'on':''}">Skořepina</button></div>`+
     `<div class="seg"><button data-rel="0" class="${v.rel?'':'on'}">Lepené díly</button><button data-rel="1" class="${v.rel?'on':''}">Reliéf na AMS</button></div>`+
-    (v.shell?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('back','Záda (mm)',1.2,6,v.back,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2):(v.rcs>0?R('wall','Okraj (mm)',1.2,10,v.wall,.2):''))+
-    R('rcs','Odsazení čela (mm)',0,12,v.rcs,.5)+(v.shell?`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`:'')+
+    (v.shell?R('wall','Stěna (mm)',1.2,6,v.wall,.2)+R('back',v.lamp?'Víko (mm)':'Záda (mm)',1.2,6,v.back,.2)+R('front','Čelo (mm)',1.6,6,v.front,.2):(v.rcs>0?R('wall','Okraj (mm)',1.2,10,v.wall,.2):''))+
+    R('rcs','Odsazení čela (mm)',0,12,v.rcs,.5)+(v.shell?`<label><span>Barva čela</span><input type="color" id="fc" value="${v.fc}"></label>`:'')+LAMPUI()+
     `<p class="note">${v.rcs>0?'Čelo je zapuštěné pod okrajem písmene. ':''}${v.rel
       ?'Reliéf: jméno, dekorace a obrysy leží přímo na čele, bez kapes. Exportují se ve společných souřadnicích jako soubory panel_*, které ve slicru načteš najednou jako jeden objekt. Tisk čelem nahoru, žádné podpěry.'
       :'Lepené díly: dekorace se zapouštějí do kapes a lepí se.'}${v.shell?(v.rel?' Rámeček písmene se tiskne zvlášť čelem dolů.':''):' Čelo se vzorem a držák jsou jen u skořepiny.'}</p>`;
@@ -598,7 +651,7 @@ function right(){
   const L=`<button id="upl" class="wide" style="margin-top:0">Nahrát STL…</button><input type="file" id="stlf" accept=".stl" hidden>`+(lib.length?`<div class="lib">${lib.map(d=>`<div class="lt"><button data-lib="${d.id}" title="Přidat do návrhu"><img src="${d.thumb||''}" alt=""><b>${d.name}</b></button><button class="x" data-libdel="${d.id}" title="Odebrat z knihovny" aria-label="Odebrat">×</button></div>`).join('')}</div>`:`<p class="note">Knihovna je prázdná. Nahraný STL se tady uloží a příště ho jen přidáš do návrhu.</p>`);
   const E=`<label><span>Orientace</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu</option></select></label><p class="note">ZIP obsahuje samostatný STL pro každý díl a seznam dílů s barvami.</p><div id="msg"></div>`;
   const dtab=v.dcat||DCATS[0],DC=`<div class="seg" style="grid-template-columns:repeat(3,1fr)">${DCATS.map(c=>`<button data-dcat="${c}" class="${c==dtab?'on':''}">${c}</button>`).join('')}</div><div class="lib">${DEKO.filter(d=>d.cat==dtab).map(d=>`<div class="lt"><button data-dk="${d.k}" title="${d.sub||'Přidat do návrhu'}"><img src="${dthumb(d)}" alt=""><b>${d.n}</b></button></div>`).join('')}</div><p class="note">Každá dekorace je z vrstev v různých barvách (barvy změníš po kliknutí na díl). Zaoblený profil dělá z plochého dílu polštářek.</p>`;
-  return card('Díly v návrhu',parts)+card('Sady dekorací',DC)+card(it?'Vybraný díl: '+(it.label||it.kind):'Vybraný díl',props)+card('Knihovna dekorací',L)+card('Export',E);
+  return card('Návrhy',SVUI())+card('Díly v návrhu',parts)+card('Sady dekorací',DC)+card(it?'Vybraný díl: '+(it.label||it.kind):'Vybraný díl',props)+card('Knihovna dekorací',L)+card('Export',E);
 }
 function panel(){
   const sl=[pnl.scrollTop,pnr.scrollTop];pnl.innerHTML=left();pnr.innerHTML=right();pnl.scrollTop=sl[0];pnr.scrollTop=sl[1];
@@ -607,6 +660,8 @@ function panel(){
 let tm;const later=f=>{clearTimeout(tm);tm=setTimeout(f,150)};
 let tb;const laterB=()=>{clearTimeout(tb);tb=setTimeout(buildBoard,250);laterL()};
 const H={
+ lamp:e=>{v.lamp=e.checked?1:0;panel();later(buildLetter)},scn:e=>{v.scn=+e.value;later(buildLetter)},scty:e=>{v.scty=+e.value;later(buildLetter)},conn:e=>{v.conn=e.value;later(buildLetter)},cxo:e=>{v.cxo=+e.value;later(buildLetter)},cyo:e=>{v.cyo=+e.value;later(buildLetter)},
+ dname:e=>{v.dname=e.value},dfilein:async e=>{const f=e.files[0];if(!f)return;try{await loadDesign(JSON.parse(await f.text()))}catch(err){note('Soubor se nepodařilo načíst: '+err.message)}e.value=''},
  ...Object.fromEntries([0,1,2,3,4,5].map(i=>['dc'+i,e=>{if(sel&&sel.cols){sel.cols[i]=e.value;recolor(sel)}}])),
  dz:e=>{sel.dz=+e.value;later(()=>buildItem(sel))},dprof:e=>{sel.dome=+e.value;buildItem(sel)},
  zodsel:e=>{items.filter(i=>i.zod).forEach(i=>{scene.remove(i.mesh);items.splice(items.indexOf(i),1)});if(e.value!==''){const d=DEKO.find(x=>x.n==ZOD[+e.value]);addDeco(d.k,{zod:1,size:36,x:0,y:55})}else{select(items[0]||null)}laterB()},
@@ -620,7 +675,7 @@ const H={
  rcs:e=>{v.rcs=+e.value;items.forEach(buildItem);later(buildLetter)},
  bd:e=>{v.bd=e.checked?1:0;panel();buildBoard()},bo:e=>{v.bo=+e.value;later(buildBoard)},bt:e=>{v.bt=+e.value;later(buildBoard)},bc:e=>{v.bc=e.value;bmesh.material.color.set(v.bc)},
  ol:e=>{sel.ol=e.checked?1:0;buildItem(sel);panel()},oo:e=>{sel.oo=+e.value;later(()=>{updRing(sel);laterB()})},ot:e=>{sel.ot=+e.value;later(()=>buildItem(sel))},oc:e=>{sel.oc=e.value;sel.rmesh.material.color.set(sel.oc)},
-  lc:e=>letter.material.color.set(v.lc=e.value),
+  lc:e=>{letter.material.color.set(v.lc=e.value);lid.material.color.set(v.lc)},
  ttx:e=>{sel.text=e.value;v.tx[sel.tag]=e.value;later(()=>buildItem(sel))},tsh:e=>{sel.shape=e.value;buildItem(sel);panel()},tpd:e=>{sel.pad=+e.value;later(()=>buildItem(sel))},
  nm:e=>{v.nm=e.value;items.filter(i=>i.kind=='Jméno').forEach(i=>later(()=>buildItem(i)))},
  nf:e=>{v.nf=e.value;items.filter(i=>i.kind=='Jméno').forEach(buildItem)},
@@ -634,6 +689,12 @@ for(const pn of [pnl,pnr])pn.addEventListener('input',e=>{const d=e.target.datas
 for(const pn of [pnl,pnr])pn.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.rel!==undefined){v.rel=+b.dataset.rel;items.forEach(buildItem);buildLetter();panel();return}
   if(b.dataset.ro){if(b.dataset.ro=='x')sel.ox=(sel.ox+1)%4;else if(b.dataset.ro=='y')sel.oy=(sel.oy+1)%4;else sel.ox=(sel.ox+2)%4;buildItem(sel);return}
+  if(b.dataset.dopen){openSlot(b.dataset.dopen);return}
+  if(b.dataset.ddel){delSlot(b.dataset.ddel);return}
+  if(b.id=='dsave'){saveSlot();return}
+  if(b.id=='drestore'){restoreAuto();return}
+  if(b.id=='dfile'){downloadDesign();return}
+  if(b.id=='dload'){document.getElementById('dfilein').click();return}
   if(b.dataset.lib){libAdd(+b.dataset.lib);return}
   if(b.dataset.dcat){v.dcat=b.dataset.dcat;panel();return}
   if(b.dataset.dk){addDeco(b.dataset.dk);return}
@@ -675,7 +736,10 @@ async function exportZip(btn){
     const fh=q=>v.ori?q.clone().rotateY(Math.PI).translate(0,0,fT+v.ph):q.clone();
     const mg=(a,b)=>mergeGeometries([a,b].map(q=>{q=q.clone();if(q.index)q=q.toNonIndexed();q.deleteAttribute('uv');return q}));
     const ltr=`${v.ch}_pismeno_${hex(v.lc)}.stl`,linfo=`písmeno ${v.ch}, ${v.shell?'skořepina':'plné'}, výška ${v.lh} mm, hloubka ${v.D} mm${v.rcs?', čelo odsazené o '+v.rcs+' mm':''}`;
-    if(rel&&!v.shell)grp(ltr,g,linfo+', základ panelu');else add(ltr,flip(g),linfo+', tisk čelem dolů');
+    if(rel&&!v.shell)grp(ltr,g,linfo+', základ panelu');
+    else if(v.lamp&&v.shell&&lidG){add(ltr,g.clone(),linfo+', lampa: tisk zády dolů, otevřená strana nahoru');
+      add(`${v.ch}_zada_vicko_${hex(v.lc)}.stl`,lidG.clone(),`víko zad, tloušťka ${v.bk} mm, tisk vnější stranou dolů; šrouby ${lampInfo.spots.length}× M3 (${v.scty?'vložky M3 × 5,7 mm, otvor 4,2 mm':'samořezné 8–10 mm, předvrtaný otvor 2,6 mm'})${lampInfo.conn?(lampInfo.conn.kind=='usbc'?', okno 9,4 × 3,8 mm na USB-C zásuvku':', otvor Ø 5,5 mm na kabel'):''}`)}
+    else add(ltr,flip(g),linfo+', tisk čelem dolů');
     const pl0=fl.find(f=>f.plain);
     if(!rel&&pl0&&pp&&v.pm){add(`${v.ch}_celo+vzor_${hex(v.fc)}.stl`,fh(mg(pl0.g,pp)),`čelo s vzorem v jednom dílu, tisk čelem dolů; výměna filamentu ve výšce ${v.ph} mm: spodních ${v.ph} mm barva vzoru ${v.pc}, výš barva čela ${v.fc}`);fl.splice(fl.indexOf(pl0),1)}
     else if(pp){if(rel)grp(`${v.ch}_vzor_${hex(v.pc)}.stl`,pp,`vzor na čele, výška ${v.ph} mm`);else add(`${v.ch}_vzor_${hex(v.pc)}.stl`,fh(pp),`vzor na čele, výška ${v.ph} mm, lepí se na čelní desku`)}
@@ -708,7 +772,69 @@ async function exportZip(btn){
   btn.disabled=false;
 }
 
-await Promise.all([getFont(v.lf),getFont(v.nf),libLoad()]);buildLetter();addItem('Jméno');
+/* ---------- ukládání návrhů ---------- */
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate=t=>{try{return new Date(t).toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return''}};
+const note=t=>{const m=document.getElementById('msg');if(m)m.textContent=t};
+const b64f=a=>{const u=new Uint8Array(a.buffer,a.byteOffset,a.byteLength);let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
+const unb64f=t=>{const s=atob(t),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return new Float32Array(u.buffer)};
+const SKIPK=new Set(['mesh','paths','bgp','sil','mg','layers','lm','rmesh','src','rimHit','h','geo']);
+let slots=[],autoMeta=null,loading=0,autoSig='',autoPrevDone=0,autoAtStart=false;
+function litData(){const im=lit.img,k=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.92)}
+function serDesign(full=true){
+  const sv={...v};['warn','key','hasPlate','bk','cutSig','dname'].forEach(k=>delete sv[k]);
+  const its=items.map(it=>{const o={};for(const k in it){if(!SKIPK.has(k))o[k]=it[k]}o.x=it.mesh.position.x;o.y=it.mesh.position.y;if(full&&it.src)o.geo=b64f(it.src.attributes.position.array);return o});
+  const d={app:'pismena',ver:1,name:v.dname||'',saved:new Date().toISOString(),v:sv,items:its,svg:svg?svg.src:null,sel:sel?sel.id:null};
+  if(lit){if(full){lit.data??=litData();d.lit=lit.data}else d.lit=1}
+  return d}
+async function loadDesign(d){
+  if(!d||d.app!='pismena'||!d.v)throw new Error('To není soubor návrhu z tohoto editoru.');
+  loading=1;
+  try{
+    items.forEach(i=>scene.remove(i.mesh));items.length=0;sel=null;
+    Object.assign(v,d.v);v.dname=d.name&&d.name[0]!='_'?d.name:'';v.warn=[];v.key=null;v.cutSig=undefined;svg=null;lit=null;
+    const fonts=new Set([v.lf,v.nf,...d.items.map(i=>i.font).filter(Boolean)]);
+    await Promise.all([...fonts].filter(n=>F[n]).map(getFont));
+    if(d.svg){loadSvg(d.svg);v.ovr=d.v.ovr||{};v.hid=d.v.hid||{}}
+    if(typeof d.lit=='string'){const im=new Image();im.src=d.lit;await im.decode();lit={img:im,data:d.lit}}
+    if(v.img=='svg'&&!svg||v.img=='lit'&&!lit)v.img='';
+    uid=Math.max(uid,...d.items.map(i=>i.id||0));
+    for(const o of d.items){const it={...o};delete it.x;delete it.y;delete it.geo;
+      it.mesh=new THREE.Mesh(new THREE.BufferGeometry(),mat(it.color||'#ffffff'));
+      if(o.geo){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(unb64f(o.geo),3));g.computeVertexNormals();it.src=g}
+      it.mesh.position.set(o.x||0,o.y||0,0);scene.add(it.mesh);initItem(it);items.push(it)}
+    buildLetter();items.forEach(buildItem);
+    select(items.find(i=>i.id==d.sel)||items[0]||null);
+    autoSig=sigNow();note(`Návrh načten: ${d.name||'bez názvu'}`);
+  }finally{loading=0}}
+async function slotsLoad(){const all=(await dbS('designs','readonly',s=>s.getAll()))||[];
+  slots=all.filter(x=>x.name!='_auto').map(x=>({name:x.name,saved:x.saved})).sort((a,b)=>b.saved.localeCompare(a.saved));
+  const a=all.find(x=>x.name=='_auto');autoMeta=a?{saved:a.saved}:null}
+async function saveSlot(){
+  const name=(v.dname||'').trim()||`Návrh ${v.ch||''} ${v.nm||''}`.trim();v.dname=name;
+  const d=serDesign();d.name=name;
+  const ok=await dbS('designs','readwrite',s=>s.put({name,saved:d.saved,data:d}));
+  if(ok==null){note('Uložení se nepovedlo. Zkus stáhnout soubor návrhu.');return}
+  await slotsLoad();panel();note(`Uloženo: ${name}`)}
+async function openSlot(name){const r=await dbS('designs','readonly',s=>s.get(name));if(r&&r.data){try{await loadDesign(r.data)}catch(e){note('Návrh se nepodařilo otevřít: '+e.message)}}}
+async function delSlot(name){await dbS('designs','readwrite',s=>s.delete(name));await slotsLoad();panel()}
+const restoreAuto=()=>openSlot('_auto');
+function downloadDesign(){const d=serDesign();d.name=v.dname||'navrh';const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:'application/json'}));a.download=`navrh_${d.name.replace(/[^\w\-]+/g,'_')}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);note('Soubor návrhu stažen.')}
+function sigNow(){const d=serDesign(false);delete d.saved;return JSON.stringify(d)}
+async function autosave(){
+  if(loading||!items.length&&!svg&&!lit)return;const sig=sigNow();if(sig===autoSig)return;autoSig=sig;
+  if(!autoPrevDone&&autoAtStart){autoPrevDone=1;const old=await dbS('designs','readonly',s=>s.get('_auto'));if(old)await dbS('designs','readwrite',s=>s.put({...old,name:'_prev'}))}
+  const f=serDesign();f.name='_auto';await dbS('designs','readwrite',s=>s.put({name:'_auto',saved:f.saved,data:f}));autoMeta={saved:f.saved}}
+setInterval(autosave,5000);addEventListener('visibilitychange',()=>{if(document.hidden)autosave()});addEventListener('pagehide',()=>{autosave()});
+const SVUI=()=>`<label><span>Název</span><input type="text" id="dname" value="${esc(v.dname||'')}" placeholder="např. Theodor T"></label>
+<button id="dsave" class="wide">Uložit návrh</button>
+${slots.length?`<div id="dslots">${slots.map(x=>`<div class="slot"><div><b>${x.name=='_prev'?'Rozpracované z minula':esc(x.name)}</b><small>${fmtDate(x.saved)}</small></div><button data-dopen="${esc(x.name)}">Otevřít</button><button data-ddel="${esc(x.name)}" aria-label="Smazat">×</button></div>`).join('')}</div>`:'<p class="note">Zatím nic uložené.</p>'}
+${autoMeta?`<button id="drestore" class="wide">Obnovit poslední rozpracované (${fmtDate(autoMeta.saved)})</button>`:''}
+<button id="dfile" class="wide">Stáhnout soubor návrhu</button><button id="dload" class="wide">Načíst ze souboru…</button><input type="file" id="dfilein" accept=".json,application/json" hidden>
+<p class="note">Rozpracovaný návrh se ukládá sám v tomto prohlížeči. Pojmenované návrhy zůstanou na tomto zařízení. Pro zálohu nebo přenos na jiné zařízení stáhni soubor.</p>`;
+
+await Promise.all([getFont(v.lf),getFont(v.nf),libLoad()]);buildLetter();addItem('Jméno');await slotsLoad();autoAtStart=!!autoMeta;autoSig=sigNow();panel();
 document.getElementById('go').addEventListener('click',e=>exportZip(e.currentTarget));
 document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const p={front:[0,-40,420],back:[0,-40,-420],side:[420,-30,40],top:[0,420,40]}[b.dataset.view];cam.position.set(...p);ctl.target.set(0,0,10);ctl.update()});
 </script></body></html>
