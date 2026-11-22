@@ -209,7 +209,7 @@ function mountParts(){
   return{wall,stand:st,Wb,Hr}}
 /* ---------- obrázek na čelo: SVG po barvách a litofánie ---------- */
 const NS=1e6,colOf=g=>v.ovr[g.col]||g.col;
-function loadSvg(text){
+function svgRaw(text){
   const data=new SVGLoader().parse(text),layers=[];
   for(const p of data.paths){const st=p.userData&&p.userData.style;if(!st||!st.fill||st.fill==='none'||st.fillOpacity===0)continue;
     const cs=[];for(const sh of SVGLoader.createShapes(p)){const e=sh.extractPoints(24);cs.push({c:e.shape,h:0},...e.holes.map(c=>({c,h:1})))}
@@ -221,8 +221,9 @@ function loadSvg(text){
   let cover=[];const raw=new Map();
   for(let i=L.length-1;i>=0;i--){const subj=paths(tree(L[i].paths)),vis=cover.length?paths(tree(subj,CL.ClipType.ctDifference,cover)):subj;
     if(vis.length)raw.set(L[i].col,[...(raw.get(L[i].col)||[]),...vis]);cover=cover.length?paths(tree([...cover,...subj])):subj}
-  svg={raw,src:text};v.ovr={};v.hid={};
+  return raw;
 }
+function loadSvg(text){svg={raw:svgRaw(text),src:text};v.ovr={};v.hid={}}
 function clusters(){
   if(!svg)return [];const cl=[],dist=(a,b)=>{const A=new THREE.Color(a),B=new THREE.Color(b);return Math.hypot(A.r-B.r,A.g-B.g,A.b-B.b)*255};
   for(const c of svg.raw.keys()){const g=cl.find(x=>dist(x.col,c)<v.imt);g?g.m.push(c):cl.push({col:c,m:[c]})}
@@ -363,7 +364,7 @@ function buildModel(it){
   it.h=(b.max.z-b.min.z)*sc;it.P=Math.min(it.P,maxP(),it.h*.8);it.paths=footprint(g,it.P);it.sil=footprint(g,1e9);it.mg=g;
   it.mesh.geometry.dispose();it.mesh.geometry=g.clone();it.mesh.rotation.z=it.rot*Math.PI/180;it.mesh.position.z=faceTop()-embed(it);updRing(it);laterB();
 }
-const idb=()=>new Promise((res,rej)=>{const q=indexedDB.open('pismena',2);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains('dec'))d.createObjectStore('dec',{keyPath:'id',autoIncrement:true});if(!d.objectStoreNames.contains('designs'))d.createObjectStore('designs',{keyPath:'name'})};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});
+const idb=()=>new Promise((res,rej)=>{const q=indexedDB.open('pismena',3);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains('dec'))d.createObjectStore('dec',{keyPath:'id',autoIncrement:true});if(!d.objectStoreNames.contains('designs'))d.createObjectStore('designs',{keyPath:'name'});if(!d.objectStoreNames.contains('udeco'))d.createObjectStore('udeco',{keyPath:'k'})};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});
 const dbS=async(store,mode,fn)=>{try{const d=await idb();return await new Promise((res,rej)=>{const t=d.transaction(store,mode),q=fn(t.objectStore(store));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})}catch(e){console.warn(e);return null}};
 const dbRun=(mode,fn)=>dbS('dec',mode,fn);
 const libLoad=async()=>{lib=(await dbRun('readonly',s=>s.getAll()))||[]};
@@ -544,6 +545,92 @@ function addDeco(key,extra={}){
   const it={id:++uid,kind:'Deko',deco:key,label:D.n,cols:[...D.cols],size:D.size,rot:0,T:2,dz:1,dome:0,P:1.5,clr:.2,ol:0,oo:3,ot:1.5,oc:'#8a5a3a',color:D.cols[0],mesh:new THREE.Mesh(new THREE.BufferGeometry(),mat(D.cols[0])),...extra};
   it.mesh.position.set(extra.x??((n%3)-1)*26,extra.y??(Math.floor(n/3)*-26+30),0);scene.add(it.mesh);initItem(it);items.push(it);buildItem(it);select(it)}
 
+/* ---------- vlastní dekorace z SVG / PNG / JPG ---------- */
+DCATS.push('Moje');
+const UD={mode:1,inv:0,th:0,raised:1};
+const hx=(r,g,b)=>'#'+[r,g,b].map(x=>Math.round(x).toString(16).padStart(2,'0')).join('');
+const parea=P=>P.reduce((s,p)=>s+Math.abs(CL.Clipper.Area(p)),0);
+function regUD(u){const i=DEKO.findIndex(d=>d.k==u.k);if(i>=0)DEKO.splice(i,1);
+  DEKO.push({k:u.k,cat:'Moje',n:u.n,cols:u.cols,size:u.size,user:1,u,gen:()=>u.L.map(l=>({c:l.c,z:l.z,P:l.P.map(p=>p.map(q=>({X:q[0],Y:q[1]})))}))});
+  delete decoRaw[u.k];delete thumbs[u.k]}
+async function udLoad(){const a=(await dbS('udeco','readonly',s=>s.getAll()))||[];a.sort((x,y)=>x.k<y.k?-1:1).forEach(regUD)}
+async function udDel(k){const i=DEKO.findIndex(d=>d.k==k);if(i>=0)DEKO.splice(i,1);await dbS('udeco','readwrite',s=>s.delete(k));panel()}
+function dpClosed(P,tol){const n=P.length;if(n<4)return P;let j=0,bd=-1;for(let i=1;i<n;i++){const d=Math.hypot(P[i][0]-P[0][0],P[i][1]-P[0][1]);if(d>bd){bd=d;j=i}}
+  const keep=new Uint8Array(n);keep[0]=keep[j]=1;
+  const run=(a,b)=>{const st=[[a,b]];while(st.length){const [i0,i1]=st.pop();if(i1-i0<2)continue;const A=P[i0%n],B=P[i1%n],dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy)||1e-9;let m=-1,md=-1;
+      for(let i=i0+1;i<i1;i++){const Q=P[i%n],d=Math.abs((Q[0]-A[0])*dy-(Q[1]-A[1])*dx)/L;if(d>md){md=d;m=i}}
+      if(md>tol){keep[m%n]=1;st.push([i0,m],[m,i1])}}};
+  run(0,j);run(j,n);return P.filter((_,i)=>keep[i])}
+function traceMask(m,w,h){
+  const W=w+2,H=h+2,T=.5;let f=new Float32Array(W*H);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)f[(y+1)*W+x+1]=m[y*w+x];
+  for(let n=0;n<2;n++){const g=new Float32Array(W*H);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){let s=0;for(let dy=-1;dy<2;dy++)for(let dx=-1;dx<2;dx++)s+=f[(y+dy)*W+x+dx];g[y*W+x]=s/9}f=g}
+  const pt=new Map(),adj=new Map(),segs=[];
+  const ek=(t,x,y)=>{const key=t+x+','+y;if(!pt.has(key)){const a=f[y*W+x],b=t=='h'?f[y*W+x+1]:f[(y+1)*W+x],u=(T-a)/(b-a);pt.set(key,t=='h'?[x+u,y]:[x,y+u])}return key};
+  const add=(a,b)=>{const i=segs.length;segs.push([a,b]);for(const k of [a,b]){if(!adj.has(k))adj.set(k,[]);adj.get(k).push(i)}};
+  for(let y=0;y<H-1;y++)for(let x=0;x<W-1;x++){
+    const c=(f[y*W+x]>T?8:0)|(f[y*W+x+1]>T?4:0)|(f[(y+1)*W+x+1]>T?2:0)|(f[(y+1)*W+x]>T?1:0);if(c==0||c==15)continue;
+    const Tp=()=>ek('h',x,y),B=()=>ek('h',x,y+1),L=()=>ek('v',x,y),R=()=>ek('v',x+1,y);
+    switch(c){case 1:case 14:add(L(),B());break;case 2:case 13:add(B(),R());break;case 3:case 12:add(L(),R());break;case 4:case 11:add(Tp(),R());break;
+      case 5:add(Tp(),R());add(L(),B());break;case 6:case 9:add(Tp(),B());break;case 7:case 8:add(Tp(),L());break;case 10:add(Tp(),L());add(B(),R());break}}
+  const used=new Uint8Array(segs.length),loops=[];
+  for(let s=0;s<segs.length;s++){if(used[s])continue;used[s]=1;const start=segs[s][0],pts=[pt.get(start)];let key=segs[s][1];
+    while(key!==start){pts.push(pt.get(key));const nx=adj.get(key).find(j=>!used[j]);if(nx===undefined)break;used[nx]=1;key=segs[nx][0]===key?segs[nx][1]:segs[nx][0]}
+    const q=dpClosed(pts,.3);if(q.length>2)loops.push(q.map(([x,y])=>({X:Math.round((x-1)*1000),Y:Math.round(-(y-1)*1000)})))}
+  const P=loops,c=new CL.Clipper();c.AddPaths(P,CL.PolyType.ptSubject,true);
+  const Tr=new CL.PolyTree();c.Execute(CL.ClipType.ctUnion,Tr,CL.PolyFillType.pftEvenOdd,CL.PolyFillType.pftEvenOdd);
+  return paths(Tr).filter(p=>Math.abs(CL.Clipper.Area(p))>8e6)}
+async function rasterGroups(file){
+  const img=new Image();img.src=URL.createObjectURL(file);await img.decode();
+  const k=Math.min(1,320/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.max(2,Math.round(img.naturalWidth*k)),h=Math.max(2,Math.round(img.naturalHeight*k));
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
+  const D=cx.getImageData(0,0,w,h).data,N=w*h,fg=new Uint8Array(N),lum=i=>.299*D[i*4]+.587*D[i*4+1]+.114*D[i*4+2],mode=UD.mode;
+  let alpha=false;for(let i=0;i<N;i++)if(D[i*4+3]<250){alpha=true;break}
+  if(alpha)for(let i=0;i<N;i++)fg[i]=D[i*4+3]>=128?1:0;
+  else if(mode==1){let th=UD.th;if(!th){const hi=new Float64Array(256);for(let i=0;i<N;i++)hi[Math.min(255,lum(i)|0)]++;let sum=0;for(let i=0;i<256;i++)sum+=i*hi[i];let wB=0,sB=0,best=0;th=128;
+      for(let t=0;t<256;t++){wB+=hi[t];if(!wB)continue;const wF=N-wB;if(!wF)break;sB+=t*hi[t];const mB=sB/wB,mF=(sum-sB)/wF,bv=wB*wF*(mB-mF)**2;if(bv>best){best=bv;th=t+1}}}
+    for(let i=0;i<N;i++)fg[i]=lum(i)<th?1:0}
+  else{const cs=[0,w-1,(h-1)*w,N-1].map(i=>[D[i*4],D[i*4+1],D[i*4+2]]),bg=[0,1,2].map(j=>cs.reduce((s,c)=>s+c[j],0)/4);
+    for(let i=0;i<N;i++)fg[i]=Math.hypot(D[i*4]-bg[0],D[i*4+1]-bg[1],D[i*4+2]-bg[2])>55?1:0}
+  if(UD.inv)for(let i=0;i<N;i++)fg[i]^=1;
+  let groups;
+  if(mode==1)groups=[{col:'#4a90d9',paths:traceMask(fg,w,h)}];
+  else{const idx=[];for(let i=0;i<N;i++)if(fg[i])idx.push(i);if(!idx.length)return[];
+    const step=Math.max(1,Math.floor(idx.length/20000)),smp=idx.filter((_,j)=>j%step==0).sort((a,b)=>lum(a)-lum(b));
+    const px=i=>[D[i*4],D[i*4+1],D[i*4+2]],dd=(c,q)=>(q[0]-c[0])**2+(q[1]-c[1])**2+(q[2]-c[2])**2;
+    let C=[px(smp[smp.length>>1])];
+    while(C.length<mode){let bi=smp[0],bd=-1;for(const i of smp){const q=px(i),m=Math.min(...C.map(c=>dd(c,q)));if(m>bd){bd=m;bi=i}}C.push(px(bi))}
+    const asg=i=>{let b=0,bd=1e18;C.forEach((c,j)=>{const d=(D[i*4]-c[0])**2+(D[i*4+1]-c[1])**2+(D[i*4+2]-c[2])**2;if(d<bd){bd=d;b=j}});return b};
+    for(let it=0;it<8;it++){const A=C.map(()=>[0,0,0,0]);for(const i of smp){const s=A[asg(i)];s[0]+=D[i*4];s[1]+=D[i*4+1];s[2]+=D[i*4+2];s[3]++}C=C.map((c,j)=>A[j][3]?[A[j][0]/A[j][3],A[j][1]/A[j][3],A[j][2]/A[j][3]]:c)}
+    const ms=C.map(()=>new Uint8Array(N));for(const i of idx)ms[asg(i)][i]=1;
+    groups=C.map((c,j)=>({col:hx(...c),paths:traceMask(ms[j],w,h)}))}
+  groups=groups.filter(g=>g.paths.length).map(g=>({...g,a:parea(g.paths)})).sort((a,b)=>b.a-a.a);
+  let cover=[];for(const g of groups){if(cover.length)g.paths=paths(tree(g.paths,CL.ClipType.ctDifference,cover));cover=cover.length?paths(tree([...cover,...g.paths])):g.paths}
+  return groups}
+function buildUD(groups,name){
+  groups=groups.map(g=>({...g,a:parea(g.paths)})).sort((a,b)=>b.a-a.a);
+  let x0=1e18,x1=-1e18,y0=1e18,y1=-1e18;groups.forEach(g=>g.paths.forEach(p=>p.forEach(q=>{x0=Math.min(x0,q.X);x1=Math.max(x1,q.X);y0=Math.min(y0,q.Y);y1=Math.max(y1,q.Y)})));
+  const f=20000/Math.max(x1-x0,y1-y0,1),cx=(x0+x1)/2,cy=(y0+y1)/2;
+  const sc=P=>CL.Clipper.CleanPolygons(P.map(p=>p.map(q=>({X:Math.round((q.X-cx)*f),Y:Math.round((q.Y-cy)*f)}))),12).filter(p=>p.length>2);
+  const gs=groups.map(g=>({col:g.col,P:sc(g.paths)})).filter(g=>g.P.length);
+  const L=UD.raised&&gs.length>1?[{c:0,z:0,P:paths(tree(gs.flatMap(g=>g.P)))},...gs.slice(1).map((g,i)=>({c:i+1,z:1,P:g.P}))]:gs.map((g,i)=>({c:i,z:0,P:g.P}));
+  return{k:'u'+Date.now().toString(36),n:name,cols:gs.map(g=>g.col),size:40,L:L.map(l=>({c:l.c,z:l.z,P:l.P.map(p=>p.map(q=>[q.X,q.Y]))}))}}
+async function udImport(file){
+  try{let groups;
+    if(/svg/i.test(file.type)||/\.svg$/i.test(file.name)){const raw=svgRaw(await file.text());let thr=40,cl;
+      do{cl=[];const d=(a,b)=>{const A=new THREE.Color(a),B=new THREE.Color(b);return Math.hypot(A.r-B.r,A.g-B.g,A.b-B.b)*255};
+        for(const [c,P] of raw){const g=cl.find(x=>d(x.col,c)<thr);g?g.P.push(...P):cl.push({col:c,P:[...P]})}thr+=30}while(cl.length>5);
+      groups=cl.map(c=>({col:c.col,paths:paths(tree(c.P))}))}
+    else groups=await rasterGroups(file);
+    groups=groups.filter(g=>g.paths.length);if(!groups.length)throw new Error('nenašel jsem žádný tvar, zkus jiný práh nebo Negativ');
+    const u=buildUD(groups,file.name.replace(/\.[^.]+$/,'').slice(0,18)||'Moje');
+    regUD(u);await dbS('udeco','readwrite',s=>s.put(u));v.dcat='Moje';addDeco(u.k);panel();note('Dekorace „'+u.n+'“ je v záložce Moje.')}
+  catch(err){note('Import se nepovedl: '+err.message);panel()}}
+const UDUI=()=>`<button id="udup" class="wide" style="margin-top:0">Nahrát SVG / PNG / JPG…</button><input type="file" id="udf" accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp" hidden>
+<label><span>Barvy (PNG, JPG)</span><select id="udmode">${[[1,'Jedna barva (silueta)'],[2,'2 barvy'],[3,'3 barvy'],[4,'4 barvy']].map(([k,n])=>`<option value="${k}" ${UD.mode==k?'selected':''}>${n}</option>`).join('')}</select></label>
+${R('udth','Práh tmavosti (0 = auto)',0,255,UD.th)}<label class="chk"><input type="checkbox" id="udinv" ${UD.inv?'checked':''}> Negativ (tvarem je světlé místo)</label>
+<label class="chk"><input type="checkbox" id="udrz" ${UD.raised?'checked':''}> Další barvy jako vystouplé detaily na podkladu</label>
+<p class="note">Nejlépe fungují černé tvary na bílém nebo průhledném pozadí. SVG si zachová své barvy (nejvýš 5). Nastavení platí pro další nahrání. Hotová dekorace se uloží v tomto zařízení a je i v uloženém návrhu.</p><div id="msg"></div>`;
 function shapePaths(it){
   const sh=it.shape;if(!sh||sh=='none'||!it.paths.length)return[];
   const f=it.paths.flat(),xs=f.map(p=>p.X/S),ys=f.map(p=>p.Y/S),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
@@ -650,7 +737,7 @@ function right(){
   const props=it?`${it.deco?DECUI(it):`<label><span>Barva</span><input type="color" id="ic" value="${it.color}"></label>`}${R('is','Velikost (mm)',10,150,it.size)}${R('ir','Otočení (°)',-180,180,it.rot)}${it.src?`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button data-ro="x">Otočit X</button><button data-ro="y">Otočit Y</button><button data-ro="f">Převrátit</button></div>`:R('it','Tloušťka (mm)',2,12,it.T,.5)}${R('ip','Zapuštění',0.5,maxP(),it.P,.1)}${R('iv','Vůle',0,.5,it.clr,.05)}${v.rcs>0?`<label class="chk"><input type="checkbox" id="cut" ${it.cut!==0?'checked':''}> Vyříznout cestu v okraji písmene</label><label class="chk"><input type="checkbox" id="clp" ${it.clip===1?'checked':''}> Oříznout přesah (místo vyříznutí)</label>`:''}${it.tag?TAGUI(it):OLUI(it)}<button id="del" class="wide danger">Smazat díl</button>`:`<p class="note">Vyber díl v seznamu, nebo na něj klikni v náhledu.</p>`;
   const L=`<button id="upl" class="wide" style="margin-top:0">Nahrát STL…</button><input type="file" id="stlf" accept=".stl" hidden>`+(lib.length?`<div class="lib">${lib.map(d=>`<div class="lt"><button data-lib="${d.id}" title="Přidat do návrhu"><img src="${d.thumb||''}" alt=""><b>${d.name}</b></button><button class="x" data-libdel="${d.id}" title="Odebrat z knihovny" aria-label="Odebrat">×</button></div>`).join('')}</div>`:`<p class="note">Knihovna je prázdná. Nahraný STL se tady uloží a příště ho jen přidáš do návrhu.</p>`);
   const E=`<label><span>Orientace</span><select id="ori"><option value="1" ${v.ori?'selected':''}>Čelem dolů (k tisku)</option><option value="0" ${v.ori?'':'selected'}>Jako v náhledu</option></select></label><p class="note">ZIP obsahuje samostatný STL pro každý díl a seznam dílů s barvami.</p><div id="msg"></div>`;
-  const dtab=v.dcat||DCATS[0],DC=`<div class="seg" style="grid-template-columns:repeat(3,1fr)">${DCATS.map(c=>`<button data-dcat="${c}" class="${c==dtab?'on':''}">${c}</button>`).join('')}</div><div class="lib">${DEKO.filter(d=>d.cat==dtab).map(d=>`<div class="lt"><button data-dk="${d.k}" title="${d.sub||'Přidat do návrhu'}"><img src="${dthumb(d)}" alt=""><b>${d.n}</b></button></div>`).join('')}</div><p class="note">Každá dekorace je z vrstev v různých barvách (barvy změníš po kliknutí na díl). Zaoblený profil dělá z plochého dílu polštářek.</p>`;
+  const dtab=v.dcat||DCATS[0],DC=`<div class="seg" style="grid-template-columns:repeat(3,1fr)">${DCATS.map(c=>`<button data-dcat="${c}" class="${c==dtab?'on':''}">${c}</button>`).join('')}</div>${dtab=='Moje'?UDUI():''}<div class="lib">${DEKO.filter(d=>d.cat==dtab).map(d=>`<div class="lt"><button data-dk="${d.k}" title="${d.sub||'Přidat do návrhu'}"><img src="${dthumb(d)}" alt=""><b>${d.n}</b></button>${d.user?`<button class="x" data-udel="${d.k}" title="Odebrat z Moje" aria-label="Odebrat">×</button>`:''}</div>`).join('')}</div><p class="note">Každá dekorace je z vrstev v různých barvách (barvy změníš po kliknutí na díl). Zaoblený profil dělá z plochého dílu polštářek.</p>`;
   return card('Návrhy',SVUI())+card('Díly v návrhu',parts)+card('Sady dekorací',DC)+card(it?'Vybraný díl: '+(it.label||it.kind):'Vybraný díl',props)+card('Knihovna dekorací',L)+card('Export',E);
 }
 function panel(){
@@ -670,6 +757,7 @@ const H={
  lh:e=>{v.lh=+e.value;later(buildLetter)},D:e=>{v.D=+e.value;later(buildLetter)},
  wall:e=>{v.wall=+e.value;later(buildLetter)},front:e=>{v.front=+e.value;items.forEach(buildItem);later(buildLetter)},back:e=>{v.back=+e.value;later(buildLetter)},fc:e=>{plate.material.color.set(v.fc=e.value);if(v.img)buildFront()},ori:e=>v.ori=+e.value,pt:e=>{v.pt=e.value;buildPattern();panel()},pw:e=>{v.pw=+e.value;later(buildPattern)},pg:e=>{v.pg=+e.value;later(buildPattern)},ph:e=>{v.ph=+e.value;later(buildPattern)},pc:e=>pat.material.color.set(v.pc=e.value),pm:e=>v.pm=+e.value,imode:e=>{v.img=e.value;buildFront();panel()},zs:e=>{v.isz=+e.value;later(buildFront)},zx:e=>{v.ix=+e.value;later(buildFront)},zy:e=>{v.iy=+e.value;later(buildFront)},zr:e=>{v.ir=+e.value;later(buildFront)},zt:e=>{v.imt=+e.value;later(()=>{buildFront();renderPal()})},
  lsz:e=>{v.lsz=+e.value;later(buildFront)},lx:e=>{v.lx=+e.value;later(buildFront)},ly:e=>{v.ly=+e.value;later(buildFront)},lmin:e=>{v.lmin=+e.value;later(buildFront)},lmax:e=>{v.lmax=+e.value;later(buildFront)},lneg:e=>{v.lneg=e.checked?1:0;buildFront()},lres:e=>v.lres=+e.value,
+ udmode:e=>{UD.mode=+e.value},udth:e=>{UD.th=+e.value},udinv:e=>{UD.inv=e.checked?1:0},udrz:e=>{UD.raised=e.checked?1:0},udf:async e=>{const f=e.files[0];if(!f)return;await udImport(f);e.value=''},
  svgf:async e=>{const f=e.files[0];if(!f)return;try{loadSvg(await f.text());v.img='svg'}catch(err){document.getElementById('msg').textContent='SVG se nepodařilo načíst: '+err.message;return}e.value='';buildFront();panel()},
  litf:async e=>{const f=e.files[0];if(!f)return;try{const img=new Image();img.src=URL.createObjectURL(f);await img.decode();lit={img};v.img='lit'}catch(err){document.getElementById('msg').textContent='Fotku se nepodařilo načíst: '+err.message;return}e.value='';buildFront();panel()},stlf:async e=>{const f=e.files[0];if(!f)return;let g,buf;try{buf=await f.arrayBuffer();g=new STLLoader().parse(buf)}catch(err){document.getElementById('msg').textContent='STL se nepodařilo načíst: '+err.message;return}e.value='';importModel(g,f.name,buf)},mnt:e=>{v.mnt=+e.value;buildLetter()},
  rcs:e=>{v.rcs=+e.value;items.forEach(buildItem);later(buildLetter)},
@@ -698,6 +786,8 @@ for(const pn of [pnl,pnr])pn.addEventListener('click',e=>{const b=e.target.close
   if(b.dataset.lib){libAdd(+b.dataset.lib);return}
   if(b.dataset.dcat){v.dcat=b.dataset.dcat;panel();return}
   if(b.dataset.dk){addDeco(b.dataset.dk);return}
+  if(b.dataset.udel){udDel(b.dataset.udel);return}
+  if(b.id=='udup'){document.getElementById('udf').click();return}
   if(b.dataset.libdel){libDel(+b.dataset.libdel);return}
   if(b.dataset.pk){openPicker(b.dataset.pk);return}
   if(b.dataset.p){pickFont(b.dataset.p,b.dataset.n);return}
@@ -785,6 +875,7 @@ function serDesign(full=true){
   const sv={...v};['warn','key','hasPlate','bk','cutSig','dname'].forEach(k=>delete sv[k]);
   const its=items.map(it=>{const o={};for(const k in it){if(!SKIPK.has(k))o[k]=it[k]}o.x=it.mesh.position.x;o.y=it.mesh.position.y;if(full&&it.src)o.geo=b64f(it.src.attributes.position.array);return o});
   const d={app:'pismena',ver:1,name:v.dname||'',saved:new Date().toISOString(),v:sv,items:its,svg:svg?svg.src:null,sel:sel?sel.id:null};
+  d.ud=[...new Set(items.filter(i=>i.deco&&i.deco[0]=='u').map(i=>i.deco))].map(k=>DEKO.find(x=>x.k==k)?.u).filter(Boolean);
   if(lit){if(full){lit.data??=litData();d.lit=lit.data}else d.lit=1}
   return d}
 async function loadDesign(d){
@@ -798,6 +889,7 @@ async function loadDesign(d){
     if(d.svg){loadSvg(d.svg);v.ovr=d.v.ovr||{};v.hid=d.v.hid||{}}
     if(typeof d.lit=='string'){const im=new Image();im.src=d.lit;await im.decode();lit={img:im,data:d.lit}}
     if(v.img=='svg'&&!svg||v.img=='lit'&&!lit)v.img='';
+    for(const u of d.ud||[]){if(!DEKO.find(x=>x.k==u.k)){regUD(u);dbS('udeco','readwrite',s=>s.put(u))}}
     uid=Math.max(uid,...d.items.map(i=>i.id||0));
     for(const o of d.items){const it={...o};delete it.x;delete it.y;delete it.geo;
       it.mesh=new THREE.Mesh(new THREE.BufferGeometry(),mat(it.color||'#ffffff'));
@@ -834,7 +926,7 @@ ${autoMeta?`<button id="drestore" class="wide">Obnovit poslední rozpracované (
 <button id="dfile" class="wide">Stáhnout soubor návrhu</button><button id="dload" class="wide">Načíst ze souboru…</button><input type="file" id="dfilein" accept=".json,application/json" hidden>
 <p class="note">Rozpracovaný návrh se ukládá sám v tomto prohlížeči. Pojmenované návrhy zůstanou na tomto zařízení. Pro zálohu nebo přenos na jiné zařízení stáhni soubor.</p>`;
 
-await Promise.all([getFont(v.lf),getFont(v.nf),libLoad()]);buildLetter();addItem('Jméno');await slotsLoad();autoAtStart=!!autoMeta;autoSig=sigNow();panel();
+await Promise.all([getFont(v.lf),getFont(v.nf),libLoad(),udLoad()]);buildLetter();addItem('Jméno');await slotsLoad();autoAtStart=!!autoMeta;autoSig=sigNow();panel();
 document.getElementById('go').addEventListener('click',e=>exportZip(e.currentTarget));
 document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const p={front:[0,-40,420],back:[0,-40,-420],side:[420,-30,40],top:[0,420,40]}[b.dataset.view];cam.position.set(...p);ctl.target.set(0,0,10);ctl.update()});
 </script></body></html>
